@@ -1,0 +1,103 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+        
+    - name: Restore dependencies
+      run: dotnet restore m3u8Downloader/m3u8Downloader.csproj
+      
+    - name: Build application
+      run: dotnet build m3u8Downloader/m3u8Downloader.csproj --configuration Release --no-restore
+      
+    - name: Publish application
+      run: |
+        dotnet publish m3u8Downloader/m3u8Downloader.csproj `
+          --configuration Release `
+          --runtime win-x64 `
+          --self-contained true `
+          --output ./publish/win-x64 `
+          -p:PublishReadyToRun=true `
+          -p:PublishSingleFile=false
+          
+    - name: Create release package
+      run: |
+        # Create release directory
+        New-Item -ItemType Directory -Force -Path "release"
+        
+        # Copy all files to release folder
+        Copy-Item -Path "publish/win-x64/*" -Destination "release/" -Recurse -Force
+        
+        # Create ZIP package
+        $version = if ($env:GITHUB_REF -like "refs/tags/*") { 
+          $env:GITHUB_REF -replace "refs/tags/", "" 
+        } else { 
+          ${{ github.event.inputs.version || 'v1.0.0' }}
+        }
+        
+        Compress-Archive -Path "release/*" -DestinationPath "m3u8Downloader-$version.zip" -Force
+        
+        # Display package info
+        $zipFile = Get-Item "m3u8Downloader-$version.zip"
+        Write-Host "Package created: $($zipFile.Name)"
+        Write-Host "Package size: $($zipFile.Length) bytes"
+        
+    - name: Upload release artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: m3u8Downloader-${{ github.event.inputs.version || github.ref_name }}
+        path: |
+          m3u8Downloader-${{ github.event.inputs.version || github.ref_name }}.zip
+          release/
+          
+    - name: Create GitHub Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          m3u8Downloader-${{ github.ref_name }}.zip
+        name: Release ${{ github.ref_name }}
+        body: |
+          ## M3U8 Downloader ${{ github.ref_name }}
+          
+          ### Features
+          - Download M3U8 video streams
+          - Modern WPF UI with WPF-UI framework
+          - Built with .NET 8.0
+          - Self-contained executable
+          
+          ### Installation
+          1. Download the ZIP file
+          2. Extract to your desired location
+          3. Run `m3u8Downloader.exe`
+          
+          ### System Requirements
+          - Windows 10/11 (64-bit)
+          - No additional dependencies required (self-contained)
+          
+          ### Changes in this release
+          - Initial release
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

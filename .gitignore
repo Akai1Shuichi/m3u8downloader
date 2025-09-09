@@ -142,5 +142,5 @@ RELEASE-GUIDE.md
 *.zip
 m3u8Downloader-v*.zip
 
-# GitHub Actions (if you want to keep them private)
-.github/
+# GitHub Actions (uncomment if you want to keep them private)
+# .github/
