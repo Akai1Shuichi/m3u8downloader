@@ -131,3 +131,16 @@ $RECYCLE.BIN/
 .DS_Store
 
 _NCrunch*
+
+# Build and release scripts (local development only)
+build.bat
+build-release.ps1
+create-github-release.ps1
+RELEASE-GUIDE.md
+
+# Build output files
+*.zip
+m3u8Downloader-v*.zip
+
+# GitHub Actions (if you want to keep them private)
+.github/
