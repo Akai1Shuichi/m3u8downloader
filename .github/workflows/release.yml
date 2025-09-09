@@ -83,10 +83,10 @@ jobs:
         $release = gh release view $tag --json tagName 2>$null
         if ($release) {
           Write-Host "Release $tag already exists"
-          echo "exists=true" >> $env:GITHUB_OUTPUT
+          "exists=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
         } else {
           Write-Host "Release $tag does not exist"
-          echo "exists=false" >> $env:GITHUB_OUTPUT
+          "exists=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
         }
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
