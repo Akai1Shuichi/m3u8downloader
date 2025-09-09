@@ -14,6 +14,9 @@ on:
 jobs:
   build-and-release:
     runs-on: windows-latest
+    permissions:
+      contents: write
+      pull-requests: write
     
     steps:
     - name: Checkout code
@@ -52,8 +55,10 @@ jobs:
         $version = if ($env:GITHUB_REF -like "refs/tags/*") { 
           $env:GITHUB_REF -replace "refs/tags/", "" 
         } else { 
-          ${{ github.event.inputs.version || 'v1.0.0' }}
+          "${{ github.event.inputs.version || 'v1.0.0' }}"
         }
+        
+        Write-Host "Creating package for version: $version"
         
         Compress-Archive -Path "release/*" -DestinationPath "m3u8Downloader-$version.zip" -Force
         
@@ -70,13 +75,30 @@ jobs:
           m3u8Downloader-${{ github.event.inputs.version || github.ref_name }}.zip
           release/
           
-    - name: Create GitHub Release
+    - name: Check if release exists
       if: startsWith(github.ref, 'refs/tags/')
+      id: check-release
+      run: |
+        $tag = "${{ github.ref_name }}"
+        $release = gh release view $tag --json tagName 2>$null
+        if ($release) {
+          Write-Host "Release $tag already exists"
+          echo "exists=true" >> $env:GITHUB_OUTPUT
+        } else {
+          Write-Host "Release $tag does not exist"
+          echo "exists=false" >> $env:GITHUB_OUTPUT
+        }
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Create GitHub Release
+      if: startsWith(github.ref, 'refs/tags/') && steps.check-release.outputs.exists == 'false'
       uses: softprops/action-gh-release@v1
       with:
         files: |
           m3u8Downloader-${{ github.ref_name }}.zip
         name: Release ${{ github.ref_name }}
+        tag_name: ${{ github.ref_name }}
         body: |
           ## M3U8 Downloader ${{ github.ref_name }}
           
@@ -99,5 +121,20 @@ jobs:
           - Initial release
         draft: false
         prerelease: false
+        fail_on_unmatched_files: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Update existing release
+      if: startsWith(github.ref, 'refs/tags/') && steps.check-release.outputs.exists == 'true'
+      run: |
+        $tag = "${{ github.ref_name }}"
+        Write-Host "Updating existing release $tag with new assets"
+        
+        # Delete existing assets if they exist
+        gh release delete-asset $tag "m3u8Downloader-$tag.zip" --yes 2>$null || Write-Host "No existing asset to delete"
+        
+        # Upload new asset
+        gh release upload $tag "m3u8Downloader-$tag.zip" --clobber
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
