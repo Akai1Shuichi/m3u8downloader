@@ -1,0 +1,33 @@
+﻿<UserControl
+    x:Class="m3u8Downloader.View.Controls.LabeledInput"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="clr-namespace:m3u8Downloader.View.Controls"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    x:Name="root"
+    mc:Ignorable="d">
+    <UserControl.Resources>
+        <local:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
+    </UserControl.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock
+            Grid.Row="0"
+            Margin="0,0,0,4"
+            Foreground="White"
+            Text="{Binding Label, ElementName=root}"
+            Visibility="{Binding Label, ElementName=root, Converter={StaticResource StringToVisibilityConverter}}" />
+        <ui:TextBox
+            Grid.Row="1"
+            Height="{Binding InputHeight, ElementName=root}"
+            BorderBrush="DodgerBlue"
+            PlaceholderText="{Binding PlaceHolder, ElementName=root}"
+            Text="{Binding Text, ElementName=root, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+    </Grid>
+</UserControl>

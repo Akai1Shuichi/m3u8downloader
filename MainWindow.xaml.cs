@@ -9,6 +9,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using m3u8Downloader.ViewModel;
+using System.Diagnostics;
 
 namespace m3u8Downloader
 {
@@ -22,6 +23,19 @@ namespace m3u8Downloader
             InitializeComponent();
             MainWindowViewModel viewModel = new MainWindowViewModel();
             this.DataContext = viewModel;
+        }
+
+        private void Hyperlink_RequestNavigate(object sender, RequestNavigateEventArgs e)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true });
+                e.Handled = true;
+            }
+            catch
+            {
+                // Intentionally ignore failures to open the URL
+            }
         }
     }
 }

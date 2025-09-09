@@ -1,65 +1,206 @@
-﻿<Window x:Class="m3u8Downloader.MainWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:local="clr-namespace:m3u8Downloader.View.Controls"
-        xmlns:vm="clr-namespace:m3u8Downloader.ViewModel"
-        Title="main" Height="500" Width="700"
-        Background="Black">
+﻿<Window
+    x:Class="m3u8Downloader.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="clr-namespace:m3u8Downloader.View.Controls"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    xmlns:vm="clr-namespace:m3u8Downloader.ViewModel"
+    Title="MultiStream Downloader"
+    Width="700"
+    Height="550"
+    Background="Black"
+    Icon="Resource/Image/app.ico">
 
     <Window.DataContext>
-        <vm:MainWindowViewModel/>
+        <vm:MainWindowViewModel />
     </Window.DataContext>
 
     <Grid>
-        <StackPanel Margin="20" Orientation="Vertical">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="20" Orientation="Vertical">
 
-            <!-- Input -->
-            <Grid Margin="0,0,0,10">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
+                <!--  Input  -->
+                <Grid Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
 
-                <local:LabeledInput Grid.Column="0"
-                            Label="Nhập URL"
-                            Text="{Binding Url, Mode=TwoWay}" />
+                    <local:LabeledInput
+                        Grid.Column="0"
+                        Label="Nhập URL"
+                        PlaceHolder="https://..."
+                        Text="{Binding Url, Mode=TwoWay}" />
 
-                <StackPanel Grid.Column="1" Margin="20,0,0,0">
-                    <TextBlock Text="Max Worker" Foreground="White" Margin="0,0,0,4"/>
-                         <TextBox Text="{Binding MaxWorker, Mode=TwoWay}" Width="80"
-                     BorderBrush="DodgerBlue" BorderThickness="1"
-                     Background="Black" Foreground="White"/>
+                    <ui:Button
+                        Grid.Column="1"
+                        Width="100"
+                        Margin="10,0,0,0"
+                        VerticalAlignment="Bottom"
+                        Command="{Binding CheckSizeCommand}"
+                        Content="Check size"
+                        Foreground="White"
+                        Style="{StaticResource PrimaryButton}" />
+
+                </Grid>
+
+                <StackPanel Orientation="Vertical">
+                    <TextBlock
+                        Margin="0,0,0,4"
+                        Foreground="White"
+                        Text="Thư mục video" />
+
+                    <StackPanel Margin="0,0,0,10" Orientation="Horizontal">
+                        <local:LabeledInput
+                            Width="400"
+                            PlaceHolder="Nhập đường dẫn lưu video"
+                            Text="{Binding VideoPath, Mode=TwoWay}" />
+                        <ui:Button
+                            Command="{Binding BrowseFolderCommand}"
+                            Content="Chọn"
+                            Foreground="White"
+                            Style="{StaticResource PrimaryButton}" />
+
+                    </StackPanel>
                 </StackPanel>
-            </Grid>
 
-            <!-- Thư mục -->
-            <local:LabeledInput Label="Thư mục video" Text="{Binding VideoPath, Mode=TwoWay}" Margin="0,0,0,10"/>
+                <Expander Margin="0,4,0,0" Header="Cài đặt thông số">
+                    <StackPanel Margin="10">
 
-            <!-- Kết quả (multiline) -->
-            <TextBlock Text="Kết quả" Foreground="White" Margin="0,0,0,4"/>
-            <TextBox Text="{Binding Result, Mode=TwoWay}" 
-             Height="100" 
-             BorderBrush="DodgerBlue" BorderThickness="1"
-             Background="Black" Foreground="White"
-             TextWrapping="Wrap" AcceptsReturn="True"
-             VerticalScrollBarVisibility="Auto"
-             IsReadOnly="True" />
+                        <!--  Max Worker  -->
+                        <StackPanel
+                            Margin="0,0,0,10"
+                            HorizontalAlignment="Left"
+                            Orientation="Vertical">
+                            <TextBlock
+                                Margin="0,0,0,4"
+                                Foreground="White"
+                                Text="Số luồng" />
+                            <ui:NumberBox
+                                Width="120"
+                                BorderBrush="DodgerBlue"
+                                Minimum="1"
+                                Value="{Binding MaxWorker, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
 
-            <!-- Buttons -->
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,10,0,0">
-                <Button Content="Tải" 
-                Command="{Binding DownloadCommand}"
-                Background="DeepSkyBlue" Foreground="Black"
-                Padding="10,5" Width="100" Margin="0,0,10,0"/>
-                <Button Content="Check size" 
-                Command="{Binding CheckSizeCommand}"
-                Background="Red" Foreground="White"
-                Padding="10,5" Width="100"/>
+                        <!--  Headers  -->
+
+                        <StackPanel Orientation="Vertical">
+                            <TextBlock
+                                Margin="0,0,0,4"
+                                Foreground="White"
+                                Text="Headers" />
+                            <ui:TextBox
+                                Height="200"
+                                AcceptsReturn="True"
+                                BorderBrush="DodgerBlue"
+                                BorderThickness="1"
+                                PlaceholderText="accept: */*&#x0A;accept-encoding: gzip, deflate, br, zstd&#x0A;accept-language: en-GB,en-US;q=0.9,en;q=0.8,vi;q=0.7&#x0A;origin: https://goatembed.com&#x0A;referer: https://goatembed.com/&#x0A;sec-ch-ua: &quot;Chromium&quot;;v=&quot;140&quot;, &quot;Not=A?Brand&quot;;v=&quot;24&quot;, &quot;Google Chrome&quot;;v=&quot;140&quot;&#x0A;sec-ch-ua-mobile: ?0&#x0A;sec-ch-ua-platform: &quot;Windows&quot;&#x0A;sec-fetch-dest: empty&#x0A;sec-fetch-mode: cors&#x0A;sec-fetch-site: cross-site&#x0A;user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"
+                                Text="{Binding Headers, Mode=TwoWay}"
+                                TextWrapping="Wrap"
+                                VerticalScrollBarVisibility="Auto" />
+                        </StackPanel>
+
+                    </StackPanel>
+                </Expander>
+
+
+                <!--  Kết quả (multiline)  -->
+
+                <TextBlock
+                    Margin="0,10,0,4"
+                    Foreground="White"
+                    Text="Kết quả" />
+                <TextBox
+                    Name="ResultTextBox"
+                    Height="150"
+                    AcceptsReturn="True"
+                    BorderBrush="DodgerBlue"
+                    BorderThickness="1"
+                    HorizontalScrollBarVisibility="Auto"
+                    IsReadOnly="True"
+                    Text="{Binding Result, Mode=OneWay, UpdateSourceTrigger=PropertyChanged}"
+                    TextWrapping="Wrap"
+                    VerticalScrollBarVisibility="Auto" />
+
+                <!--  Buttons  -->
+                <StackPanel
+                    Margin="0,10,0,0"
+                    HorizontalAlignment="Left"
+                    Orientation="Horizontal">
+                    <ui:Button
+                        Width="100"
+                        Margin="0,0,10,0"
+                        Padding="10,5"
+                        Command="{Binding DownloadCommand}"
+                        Content="Tải"
+                        Foreground="White"
+                        IsEnabled="{Binding IsDownloading, Converter={StaticResource InverseBooleanConverter}}"
+                        Style="{StaticResource PrimaryButton}" />
+
+                    <ui:Button
+                        Width="100"
+                        Margin="0,0,10,0"
+                        Padding="10,5"
+                        Command="{Binding PauseCommand}"
+                        Content="Dừng"
+                        Foreground="White"
+                        IsEnabled="{Binding IsDownloading}"
+                        Style="{StaticResource SecondaryButton}" />
+
+                </StackPanel>
+
+                <!--  Footer  -->
+                <Grid Margin="0,30,0,0" HorizontalAlignment="Stretch">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <!--  Bên trái  -->
+                    <StackPanel
+                        Grid.Column="0"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Center"
+                        Orientation="Horizontal">
+                        <Image
+                            Width="16"
+                            Height="16"
+                            Source="Resource/Image/facebook.png"
+                            Stretch="Uniform" />
+                        <TextBlock Margin="6,0,0,0" Foreground="White">
+                            <Hyperlink
+                                NavigateUri="https://www.facebook.com/profile.php?id=61567027726244"
+                                RequestNavigate="Hyperlink_RequestNavigate"
+                                ToolTip="Fanpage : Thích Lập Trình">
+                                Fanpage : Thích Lập Trình
+                            </Hyperlink>
+                        </TextBlock>
+                    </StackPanel>
+
+                    <!--  Bên phải  -->
+                    <StackPanel
+                        Grid.Column="1"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        Orientation="Horizontal">
+                        <Image
+                            Width="16"
+                            Height="16"
+                            Source="Resource/Image/tiktok.png"
+                            Stretch="Uniform" />
+                        <TextBlock Margin="6,0,0,0" Foreground="White">
+                            <Hyperlink
+                                NavigateUri="https://www.tiktok.com/@trtoantech"
+                                RequestNavigate="Hyperlink_RequestNavigate"
+                                ToolTip="Tiktok: @trtoantech">
+                                Tiktok: @trtoantech
+                            </Hyperlink>
+                        </TextBlock>
+                    </StackPanel>
+                </Grid>
+
             </StackPanel>
-
-            <!-- Footer -->
-            <TextBlock Text="Fanpage : Thích Lập Trình" Foreground="White" Margin="0,20,0,0"/>
-            <TextBlock Text="Tiktok: @trtoantech" Foreground="White"/>
-        </StackPanel>
+        </ScrollViewer>
     </Grid>
 </Window>
