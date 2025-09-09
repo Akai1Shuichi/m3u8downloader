@@ -80,13 +80,21 @@ jobs:
       id: check-release
       run: |
         $tag = "${{ github.ref_name }}"
-        $release = gh release view $tag --json tagName 2>$null
-        if ($release) {
+        $owner = "${{ github.repository_owner }}"
+        $repo = "${{ github.event.repository.name }}"
+        
+        try {
+          $response = Invoke-RestMethod -Uri "https://api.github.com/repos/$owner/$repo/releases/tags/$tag" -Headers @{Authorization = "Bearer $env:GITHUB_TOKEN"} -ErrorAction Stop
           Write-Host "Release $tag already exists"
           "exists=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-        } else {
-          Write-Host "Release $tag does not exist"
-          "exists=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+        } catch {
+          if ($_.Exception.Response.StatusCode -eq 404) {
+            Write-Host "Release $tag does not exist"
+            "exists=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          } else {
+            Write-Host "Error checking release: $($_.Exception.Message)"
+            "exists=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          }
         }
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -131,10 +139,18 @@ jobs:
         $tag = "${{ github.ref_name }}"
         Write-Host "Updating existing release $tag with new assets"
         
-        # Delete existing assets if they exist
-        gh release delete-asset $tag "m3u8Downloader-$tag.zip" --yes 2>$null || Write-Host "No existing asset to delete"
-        
-        # Upload new asset
-        gh release upload $tag "m3u8Downloader-$tag.zip" --clobber
+        # Use the softprops action to upload assets to existing release
+        Write-Host "Assets will be uploaded to existing release $tag"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Upload assets to existing release
+      if: startsWith(github.ref, 'refs/tags/') && steps.check-release.outputs.exists == 'true'
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          m3u8Downloader-${{ github.ref_name }}.zip
+        tag_name: ${{ github.ref_name }}
+        overwrite: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
