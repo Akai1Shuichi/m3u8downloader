@@ -9,6 +9,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using m3u8Downloader.ViewModel;
+using Wpf.Ui.Controls;
 using System.Diagnostics;
 
 namespace m3u8Downloader
@@ -16,13 +17,12 @@ namespace m3u8Downloader
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
-    public partial class MainWindow : Window
+    public partial class MainWindow : FluentWindow
     {
         public MainWindow()
         {
             InitializeComponent();
-            MainWindowViewModel viewModel = new MainWindowViewModel();
-            this.DataContext = viewModel;
+            DataContext = new MainWindowViewModel();
         }
 
         private void Hyperlink_RequestNavigate(object sender, RequestNavigateEventArgs e)

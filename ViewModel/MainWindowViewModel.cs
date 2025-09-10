@@ -4,10 +4,8 @@ using m3u8Downloader.Service;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
-using System.Threading.Tasks;
-using System.Windows;
 using System.Windows.Input;
-using MessageBox = System.Windows.MessageBox;
+using WpfUiMessageBox = Wpf.Ui.Controls.MessageBox;
 
 namespace m3u8Downloader.ViewModel
 {
@@ -128,7 +126,12 @@ namespace m3u8Downloader.ViewModel
         {
             if (string.IsNullOrWhiteSpace(Url) || string.IsNullOrWhiteSpace(VideoPath))
             {
-                MessageBox.Show("❌ Vui lòng nhập URL và chọn thư mục lưu!", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Warning);
+                var messageBox = new WpfUiMessageBox
+                {
+                    Title = "Thông báo",
+                    Content = "❌ Vui lòng nhập URL và chọn thư mục lưu!"
+                };
+                await messageBox.ShowDialogAsync();
                 return;
             }
 
@@ -419,7 +422,12 @@ namespace m3u8Downloader.ViewModel
         private async void CheckSize()
         {
             if (string.IsNullOrEmpty(Url)) {
-                MessageBox.Show("❌ Vui lòng nhập URL!", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Warning);
+                var messageBox = new WpfUiMessageBox
+                {
+                    Title = "Thông báo",
+                    Content = "❌ Vui lòng nhập URL!"
+                };
+                await messageBox.ShowDialogAsync();
                 return;
             }
 
