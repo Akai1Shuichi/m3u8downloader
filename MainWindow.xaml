@@ -7,15 +7,32 @@
     xmlns:vm="clr-namespace:m3u8Downloader.ViewModel"
     Title="MultiStream Downloader"
     Width="700"
-    Height="550"
+    Height="618"
     ui:Design.Background="{DynamicResource ApplicationBackgroundBrush}"
     ui:Design.Foreground="{DynamicResource TextFillColorPrimaryBrush}"
     ExtendsContentIntoTitleBar="True"
     Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+    Icon="Resource/Image/app.ico"
     WindowBackdropType="Mica"
     WindowCornerPreference="Round"
-    WindowStartupLocation="CenterScreen"
-    Icon="Resource/Image/app.ico">
+    WindowStartupLocation="CenterScreen">
+
+    <ui:FluentWindow.Resources>
+        <LinearGradientBrush x:Key="DonateGradient" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Offset="0" Color="#FFFE6A7E" />
+            <GradientStop Offset="1" Color="#FF8A2BE2" />
+        </LinearGradientBrush>
+        <Style
+            x:Key="DonateButton"
+            BasedOn="{StaticResource PrimaryButton}"
+            TargetType="ui:Button">
+            <Setter Property="Background" Value="{StaticResource DonateGradient}" />
+            <Setter Property="BorderBrush" Value="#FF8A2BE2" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+    </ui:FluentWindow.Resources>
 
 
     <Grid>
@@ -24,12 +41,10 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <ui:TitleBar
-            Title="MultiStream Downloader"
-            Grid.Row="0"/>
+        <ui:TitleBar Title="MultiStream Downloader" Grid.Row="0" />
 
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-            <StackPanel Margin="20" Orientation="Vertical">
+            <StackPanel Margin="20,20,20,20" Orientation="Vertical">
 
                 <!--  Input  -->
                 <Grid Margin="0,0,0,10">
@@ -215,48 +230,69 @@
                 </StackPanel>
 
                 <!--  Footer  -->
-                <Grid Margin="0,30,0,0" HorizontalAlignment="Stretch">
+                <Grid Margin="0,70,0,0" HorizontalAlignment="Stretch">
                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <!--  Bên trái  -->
+                    <!--  Bên trái: Donate button  -->
                     <StackPanel
                         Grid.Column="0"
                         HorizontalAlignment="Left"
                         VerticalAlignment="Center"
                         Orientation="Horizontal">
+                        <ui:Button
+                            Width="120"
+                            Command="{Binding OpenDonateCommand}"
+                            Style="{StaticResource DonateButton}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Margin="0,0,6,0" Text="❤" />
+                                <TextBlock Text="Donate" />
+                            </StackPanel>
+                        </ui:Button>
+                    </StackPanel>
+
+                    <!--  Bên phải: Socials  -->
+                    <StackPanel
+                        Grid.Column="2"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        Orientation="Horizontal">
+                        <!--  Facebook  -->
                         <Image
                             Width="16"
                             Height="16"
                             Source="Resource/Image/facebook.png"
                             Stretch="Uniform" />
-                        <TextBlock Margin="6,0,0,0" Foreground="White">
+                        <TextBlock
+                            Margin="6,0,12,0"
+                            FontWeight="SemiBold"
+                            Foreground="DodgerBlue">
                             <Hyperlink
                                 NavigateUri="https://www.facebook.com/profile.php?id=61567027726244"
                                 RequestNavigate="Hyperlink_RequestNavigate"
+                                TextDecorations="{x:Null}"
                                 ToolTip="Fanpage : Thích Lập Trình">
                                 Fanpage : Thích Lập Trình
                             </Hyperlink>
                         </TextBlock>
-                    </StackPanel>
 
-                    <!--  Bên phải  -->
-                    <StackPanel
-                        Grid.Column="1"
-                        HorizontalAlignment="Right"
-                        VerticalAlignment="Center"
-                        Orientation="Horizontal">
+                        <!--  TikTok  -->
                         <Image
                             Width="16"
                             Height="16"
                             Source="Resource/Image/tiktok.png"
                             Stretch="Uniform" />
-                        <TextBlock Margin="6,0,0,0" Foreground="White">
+                        <TextBlock
+                            Margin="6,0,0,0"
+                            FontWeight="SemiBold"
+                            Foreground="DodgerBlue">
                             <Hyperlink
                                 NavigateUri="https://www.tiktok.com/@trtoantech"
                                 RequestNavigate="Hyperlink_RequestNavigate"
+                                TextDecorations="{x:Null}"
                                 ToolTip="Tiktok: @trtoantech">
                                 Tiktok: @trtoantech
                             </Hyperlink>

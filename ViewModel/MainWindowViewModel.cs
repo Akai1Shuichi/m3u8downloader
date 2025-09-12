@@ -73,6 +73,8 @@ namespace m3u8Downloader.ViewModel
 
         public ICommand BrowseFolderCommand { get; }
 
+        public ICommand OpenDonateCommand { get; }
+
         public MainWindowViewModel()
         {
             _configService = new ConfigService();
@@ -82,6 +84,7 @@ namespace m3u8Downloader.ViewModel
             CheckSizeCommand = new RelayCommand(_ => CheckSize());
             BrowseFolderCommand = new RelayCommand(_ => BrowseFolder());
             PauseCommand = new RelayCommand(_ => PauseDownload());
+            OpenDonateCommand = new RelayCommand(_ => OpenDonate());
 
         }
 
@@ -304,6 +307,18 @@ namespace m3u8Downloader.ViewModel
             catch (Exception ex)
             {
                 Result = $"❌ Lỗi khi pause: {ex.Message}";
+            }
+        }
+
+        private void OpenDonate()
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo("https://donate-trtoan.vercel.app/") { UseShellExecute = true });
+            }
+            catch
+            {
+                // Ignore open url errors
             }
         }
 
