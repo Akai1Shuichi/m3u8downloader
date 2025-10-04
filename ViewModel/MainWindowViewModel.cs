@@ -1,9 +1,11 @@
 ﻿using m3u8Downloader.Model;
 using m3u8Downloader.MVVM;
 using m3u8Downloader.Service;
+using m3u8Downloader.Services;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
+using System.Security.Policy;
 using System.Windows.Input;
 using WpfUiMessageBox = Wpf.Ui.Controls.MessageBox;
 
@@ -18,6 +20,7 @@ namespace m3u8Downloader.ViewModel
         private CancellationTokenSource _cancellationTokenSource;
         private Config _config;
         private readonly ConfigService _configService;
+        private LocalHttpServer? _httpServer;
 
 
         private string _url;
@@ -27,6 +30,46 @@ namespace m3u8Downloader.ViewModel
             get { return _url; }
             set { _url = value; OnPropertyChanged(); }
         }
+
+        // Input mode properties
+        private bool _isUrlMode = true;
+        public bool IsUrlMode
+        {
+            get { return _isUrlMode; }
+            set 
+            { 
+                _isUrlMode = value; 
+                OnPropertyChanged();
+                if (value)
+                {
+                    IsTextMode = false;
+                }
+            }
+        }
+
+        private bool _isTextMode = false;
+        public bool IsTextMode
+        {
+            get { return _isTextMode; }
+            set 
+            { 
+                _isTextMode = value; 
+                OnPropertyChanged();
+                if (value)
+                {
+                    IsUrlMode = false;
+                }
+            }
+        }
+
+
+        private string _m3u8Text;
+        public string M3u8Text
+        {
+            get { return _m3u8Text; }
+            set { _m3u8Text = value; OnPropertyChanged(); }
+        }
+
 
 
         private string _videoPath;
@@ -75,6 +118,7 @@ namespace m3u8Downloader.ViewModel
 
         public ICommand OpenDonateCommand { get; }
 
+
         public MainWindowViewModel()
         {
             _configService = new ConfigService();
@@ -96,6 +140,7 @@ namespace m3u8Downloader.ViewModel
 
                 // Áp dụng cài đặt vào properties
                 Url = _config.Url;
+                M3u8Text = _config.M3u8Text;
                 VideoPath = _config.VideoPath;
                 MaxWorker = _config.MaxWorker;
                 Headers = _config.Headers;
@@ -113,6 +158,7 @@ namespace m3u8Downloader.ViewModel
             {
                 // Cập nhật model với các giá trị hiện tại
                 _config.Url = Url;
+                _config.M3u8Text = M3u8Text;
                 _config.VideoPath = VideoPath;
                 _config.MaxWorker = MaxWorker;
                 _config.Headers = Headers;
@@ -127,12 +173,44 @@ namespace m3u8Downloader.ViewModel
 
         private async Task Download()
         {
-            if (string.IsNullOrWhiteSpace(Url) || string.IsNullOrWhiteSpace(VideoPath))
+            // Validate input based on selected mode
+            string inputSource = "";
+            if (IsUrlMode)
+            {
+                if (string.IsNullOrWhiteSpace(Url))
+                {
+                    var messageBox = new WpfUiMessageBox
+                    {
+                        Title = "Thông báo",
+                        Content = "❌ Vui lòng nhập URL!"
+                    };
+                    await messageBox.ShowDialogAsync();
+                    return;
+                }
+                inputSource = Url;
+            }
+            else if (IsTextMode)
+            {
+                if (string.IsNullOrWhiteSpace(M3u8Text))
+                {
+                    var messageBox = new WpfUiMessageBox
+                    {
+                        Title = "Thông báo",
+                        Content = "❌ Vui lòng nhập nội dung M3U8!"
+                    };
+                    await messageBox.ShowDialogAsync();
+                    return;
+                }
+                inputSource = M3u8Text;
+            }
+         
+
+            if (string.IsNullOrWhiteSpace(VideoPath))
             {
                 var messageBox = new WpfUiMessageBox
                 {
                     Title = "Thông báo",
-                    Content = "❌ Vui lòng nhập URL và chọn thư mục lưu!"
+                    Content = "❌ Vui lòng chọn thư mục lưu!"
                 };
                 await messageBox.ShowDialogAsync();
                 return;
@@ -149,8 +227,13 @@ namespace m3u8Downloader.ViewModel
             // Lưu cài đặt trước khi tải
             await SaveSettingsAsync();
 
-            Result = $"Bắt đầu tải video từ: {Url}\nThư mục: {VideoPath}\nSố luồng: {MaxWorker}";
-
+            string inputType = IsUrlMode ? "URL" : "M3U8 Text";
+            Result = $"Bắt đầu tải video từ: {inputType}\nThư mục: {VideoPath}\nSố luồng: {MaxWorker}";
+            
+            if (!IsUrlMode)
+            {
+                Result += $"\n📝 M3U8 content length: {inputSource.Length} characters";
+            }
             try
             {
                 string ytDlpPath = Path.Combine(AppContext.BaseDirectory, "Tools", "yt-dlp", "yt-dlp.exe");
@@ -171,9 +254,49 @@ namespace m3u8Downloader.ViewModel
                 }
 
                 string outputTemplate = Path.Combine(VideoPath, $"video_{DateTime.Now:yyyyMMdd_HHmmss}.%(ext)s");
+               
+
+                // Handle different input types
+                string inputArg;
+                if (IsUrlMode)
+                {
+                    inputArg = $"\"{inputSource}\"";
+                }
+                else
+                {
+                    // For text and file modes, start HTTP server to serve M3U8 content
+                    string m3u8Content;
+                    if (IsTextMode)
+                    {
+                        m3u8Content = inputSource;
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("Invalid input mode");
+                    }
+
+                    // Start HTTP server
+                    try
+                    {
+                        _httpServer = new LocalHttpServer(m3u8Content);
+                        _httpServer.Start();
+                        
+                        // Use the HTTP server URL
+                        inputArg = $"\"{_httpServer.PlaylistUrl}\"";
+                        
+                        // Add debug info
+                        Result += $"\n🌐 HTTP Server started at: {_httpServer.PlaylistUrl}";
+                    }
+                    catch (Exception ex)
+                    {
+                        Result = $"❌ Lỗi khởi động HTTP server: {ex.Message}";
+                        IsDownloading = false;
+                        return;
+                    }
+                }
 
                 var argsList = new List<string> {
-            $"\"{Url}\"",
+            inputArg,
             $"-o \"{outputTemplate}\"",
             "--format \"best[ext=mp4]/best\"",
             "--merge-output-format mp4",
@@ -276,6 +399,23 @@ namespace m3u8Downloader.ViewModel
                 }
                 IsDownloading = false;
             }
+            finally
+            {
+                // Cleanup HTTP server if created
+                if (_httpServer != null)
+                {
+                    try
+                    {
+                        _httpServer.Stop();
+                        _httpServer.Dispose();
+                        _httpServer = null;
+                    }
+                    catch
+                    {
+                        // Ignore cleanup errors
+                    }
+                }
+            }
         }
 
         private void PauseDownload()
@@ -294,6 +434,14 @@ namespace m3u8Downloader.ViewModel
                     _downloadProcess.Kill(true);
                     _downloadProcess.Dispose();
                     _downloadProcess = null;
+                }
+
+                // Stop HTTP server if running
+                if (_httpServer != null)
+                {
+                    _httpServer.Stop();
+                    _httpServer.Dispose();
+                    _httpServer = null;
                 }
 
                 // Xóa tất cả các file tạm (.part, .part-Frag, .ytdl)
@@ -436,11 +584,12 @@ namespace m3u8Downloader.ViewModel
 
         private async void CheckSize()
         {
-            if (string.IsNullOrEmpty(Url)) {
+            // Only allow size check for URL mode
+            if (!IsUrlMode || string.IsNullOrEmpty(Url)) {
                 var messageBox = new WpfUiMessageBox
                 {
                     Title = "Thông báo",
-                    Content = "❌ Vui lòng nhập URL!"
+                    Content = "❌ Chức năng kiểm tra kích thước chỉ khả dụng cho chế độ URL!"
                 };
                 await messageBox.ShowDialogAsync();
                 return;
