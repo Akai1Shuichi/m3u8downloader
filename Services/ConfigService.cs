@@ -2,7 +2,7 @@
 using System.IO;
 using System.Text.Json;
 
-namespace m3u8Downloader.Service
+namespace m3u8Downloader.Services
 {
     internal class ConfigService
     {

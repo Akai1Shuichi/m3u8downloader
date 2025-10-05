@@ -29,6 +29,7 @@
 
   <ItemGroup>
     <PackageReference Include="WPF-UI" Version="4.0.3" />
+    <PackageReference Include="Microsoft.Playwright" Version="1.40.0" />
   </ItemGroup>
 
   <ItemGroup>

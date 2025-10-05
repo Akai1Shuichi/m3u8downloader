@@ -1,11 +1,9 @@
 ﻿using m3u8Downloader.Model;
 using m3u8Downloader.MVVM;
-using m3u8Downloader.Service;
 using m3u8Downloader.Services;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
-using System.Security.Policy;
 using System.Windows.Input;
 using WpfUiMessageBox = Wpf.Ui.Controls.MessageBox;
 
@@ -15,12 +13,16 @@ namespace m3u8Downloader.ViewModel
     {
 
         private Process? _downloadProcess;
-        private bool _isPaused = false;
-        private bool _isDownloading = false;
         private CancellationTokenSource _cancellationTokenSource;
         private Config _config;
         private readonly ConfigService _configService;
         private LocalHttpServer? _httpServer;
+        private PlaywrightService? _playwrightService;
+
+        private bool _isPaused = false;
+        private bool _isDownloading = false;
+        private string m3u8TextFromUrl = "";
+        private string _extractedToken = "";
 
 
         private string _url;
@@ -101,6 +103,7 @@ namespace m3u8Downloader.ViewModel
             set { _headers = value; OnPropertyChanged(); }
         }
 
+
         public bool IsDownloading
         {
             get { return _isDownloading; }
@@ -118,10 +121,13 @@ namespace m3u8Downloader.ViewModel
 
         public ICommand OpenDonateCommand { get; }
 
+        public ICommand FetchAnimevietsubApiCommand { get; }
+
 
         public MainWindowViewModel()
         {
             _configService = new ConfigService();
+            _playwrightService = new PlaywrightService();
             _ = LoadSettingsAsync();
 
             DownloadCommand = new RelayCommand(async _ => await Download());
@@ -130,6 +136,12 @@ namespace m3u8Downloader.ViewModel
             PauseCommand = new RelayCommand(_ => PauseDownload());
             OpenDonateCommand = new RelayCommand(_ => OpenDonate());
 
+            // Đăng ký event handlers cho PlaywrightService
+            if (_playwrightService != null)
+            {
+                _playwrightService.LogMessage += OnPlaywrightLogMessage;
+                _playwrightService.ErrorOccurred += OnPlaywrightError;
+            }
         }
 
         private async Task LoadSettingsAsync()
@@ -172,7 +184,7 @@ namespace m3u8Downloader.ViewModel
         }
 
         private async Task Download()
-        {
+        {            
             // Validate input based on selected mode
             string inputSource = "";
             if (IsUrlMode)
@@ -261,24 +273,57 @@ namespace m3u8Downloader.ViewModel
                 if (IsUrlMode)
                 {
                     inputArg = $"\"{inputSource}\"";
+                    if (Url.Contains("animevietsub")) {
+                        // Start HTTP server
+                        try
+                        {
+                            await FetchAnimevietsubApi();
+                            _httpServer = new LocalHttpServer(m3u8TextFromUrl);
+                            _httpServer.Start();
+
+                            // Use the HTTP server URL
+                            inputArg = $"\"{_httpServer.PlaylistUrl}\"";
+
+                            // Add debug info
+                            Result += $"\n🌐 HTTP Server started at: {_httpServer.PlaylistUrl}";
+                        }
+                        catch (Exception ex)
+                        {
+                            Result = $"❌ Lỗi khởi động HTTP server: {ex.Message}";
+                            IsDownloading = false;
+                            return;
+                        }
+                    }
                 }
                 else
                 {
-                    // For text and file modes, start HTTP server to serve M3U8 content
-                    string m3u8Content;
-                    if (IsTextMode)
-                    {
-                        m3u8Content = inputSource;
-                    }
-                    else
-                    {
-                        throw new InvalidOperationException("Invalid input mode");
-                    }
-
                     // Start HTTP server
                     try
                     {
-                        _httpServer = new LocalHttpServer(m3u8Content);
+                        if (_playwrightService == null)
+                        {
+                            _playwrightService = new PlaywrightService();
+                            _playwrightService.LogMessage += OnPlaywrightLogMessage;
+                            _playwrightService.ErrorOccurred += OnPlaywrightError;
+                        }
+
+                        bool isInstalled = await CheckPlaywrightInstallationAsync();
+                        if (!isInstalled)
+                        {
+                            Result = "❌ Playwright chưa được cài đặt đúng cách";
+                            return;
+                        }
+
+                        bool initialized = await _playwrightService.InitializeAsync();
+                        if (!initialized)
+                        {
+                            Result = "❌ Không thể khởi tạo Playwright";
+                            return;
+                        }
+
+                        var converted = await _playwrightService.ConvertM3U8ContentAsync(inputSource);
+                        m3u8TextFromUrl = converted;
+                        _httpServer = new LocalHttpServer(converted);
                         _httpServer.Start();
                         
                         // Use the HTTP server URL
@@ -759,6 +804,265 @@ namespace m3u8Downloader.ViewModel
                     await SaveSettingsAsync();
                 }
             }
+        }
+
+        private static int? ExtractAnimevietsubIdFromUrl(string url)
+        {
+            try
+            {
+                // Sử dụng regex để tìm phần -a<digits> trong URL
+                var match = System.Text.RegularExpressions.Regex.Match(url, @"-a(\d+)");
+                if (match.Success && int.TryParse(match.Groups[1].Value, out var id))
+                {
+                    return id;
+                }
+                return null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+
+        private async Task FetchAnimevietsubApi()
+        {
+            if (string.IsNullOrWhiteSpace(Url))
+            {
+                Result = "❌ Vui lòng nhập URL animevietsub";
+                return;
+            }
+
+            if (!Url.Contains("animevietsub"))
+            {
+                Result = "❌ URL phải thuộc domain animevietsub.show";
+                return;
+            }
+
+            try
+            {
+                if (_playwrightService == null)
+                {
+                    _playwrightService = new PlaywrightService();
+                    _playwrightService.LogMessage += OnPlaywrightLogMessage;
+                    _playwrightService.ErrorOccurred += OnPlaywrightError;
+                }
+
+                bool isInstalled = await CheckPlaywrightInstallationAsync();
+                if (!isInstalled)
+                {
+                    Result = "❌ Playwright chưa được cài đặt đúng cách";
+                    return;
+                }
+
+                bool initialized = await _playwrightService.InitializeAsync();
+                if (!initialized)
+                {
+                    Result = "❌ Không thể khởi tạo Playwright";
+                    return;
+                }
+
+                var id = ExtractAnimevietsubIdFromUrl(Url);
+                if (id == null)
+                {
+                    Result = "❌ Không thể parse ID từ URL";
+                    return;
+                }
+
+                // Ensure token exists (try to extract if empty)
+                if (string.IsNullOrEmpty(_extractedToken))
+                {
+                    var html = await _playwrightService.DownloadHtmlFromUrlAsync(Url);
+                    if (!string.IsNullOrEmpty(html))
+                    {
+                        var token = ExtractTokenFromHtml(html);
+                        if (!string.IsNullOrEmpty(token))
+                        {
+                            _extractedToken = token;
+                        }
+                    }
+                }
+
+                if (string.IsNullOrEmpty(_extractedToken))
+                {
+                    Result = "❌ Không có token để gọi API";
+                    return;
+                }
+
+                string apiUrl = "https://animevietsub.show/ajax/player";
+
+                using (var httpClient = new HttpClient())
+                {
+                    httpClient.Timeout = TimeSpan.FromSeconds(30);
+
+                    // Build headers similar to the curl
+                    httpClient.DefaultRequestHeaders.Accept.Clear();
+                    httpClient.DefaultRequestHeaders.Accept.ParseAdd("application/json, text/javascript, */*; q=0.01");
+                    httpClient.DefaultRequestHeaders.TryAddWithoutValidation("x-requested-with", "XMLHttpRequest");
+                    httpClient.DefaultRequestHeaders.TryAddWithoutValidation("origin", "https://animevietsub.show");
+                    httpClient.DefaultRequestHeaders.TryAddWithoutValidation("referer", Url);
+                    httpClient.DefaultRequestHeaders.TryAddWithoutValidation("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36");
+
+                    // Try attach cookies from Playwright session
+                    var cookies = await _playwrightService.GetCookiesHeaderForUrlAsync("https://animevietsub.show/");
+                    if (!string.IsNullOrEmpty(cookies))
+                    {
+                        httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Cookie", cookies);
+                    }
+
+                    var content = new FormUrlEncodedContent(new[]
+                    {
+                        new KeyValuePair<string, string>("link", _extractedToken),
+                        new KeyValuePair<string, string>("id", id.Value.ToString()),
+                    });
+
+                    var response = await httpClient.PostAsync(apiUrl, content);
+                    var body = await response.Content.ReadAsStringAsync();
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        Result = $"❌ API lỗi: {(int)response.StatusCode} - {response.ReasonPhrase}\n{body}";
+                        return;
+                    }
+
+                    // Parse minimal JSON to get link[0].file
+                    string? fileValue = null;
+                    try
+                    {
+                        using var doc = System.Text.Json.JsonDocument.Parse(body);
+                        if (doc.RootElement.TryGetProperty("link", out var linkArray) && linkArray.ValueKind == System.Text.Json.JsonValueKind.Array)
+                        {
+                            if (linkArray.GetArrayLength() > 0)
+                            {
+                                var first = linkArray[0];
+                                if (first.TryGetProperty("file", out var fileProp))
+                                {
+                                    fileValue = fileProp.GetString();
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Result = $"❌ Lỗi parse JSON: {ex.Message}\n{body}";
+                        return;
+                    }
+
+                    if (!string.IsNullOrEmpty(fileValue))
+                    {
+                        Result = $"✅ file: {fileValue}";
+
+                        try
+                        {
+                            // Process encrypted file value to m3u8
+                            var playlist = await m3u8Downloader.Services.M3U8Processor.ProcessM3U8DataAsync(fileValue);
+                            if (playlist != null && !string.IsNullOrEmpty(playlist.Content))
+                            {
+                                // Optional: convert redirecting googleapis URLs to final URLs
+                                var converted = await _playwrightService.ConvertM3U8ContentAsync(playlist.Content);
+                                m3u8TextFromUrl = converted;
+                                Result = "✅ Đã xử lý và chuyển đổi M3U8 thành công!";
+                            }
+                            else
+                            {
+                                Result = "⚠️ Không thể xử lý M3U8 từ file";
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Result = $"❌ Lỗi xử lý M3U8: {ex.Message}";
+                        }
+                    }
+                    else
+                    {
+                        Result = $"⚠️ Không tìm thấy field 'file'\n{body}";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Result = $"❌ Lỗi gọi API: {ex.Message}";
+            }
+        }
+
+        private async Task<bool> CheckPlaywrightInstallationAsync()
+        {
+            try
+            {
+                // Thử tạo Playwright instance để kiểm tra
+                using var playwright = await Microsoft.Playwright.Playwright.CreateAsync();
+                return true;
+            }
+            catch (Microsoft.Playwright.PlaywrightException ex)
+            {
+                OnPlaywrightError(this, $"Playwright Error: {ex.Message}");
+                return false;
+            }
+            catch (Exception ex)
+            {
+                OnPlaywrightError(this, $"Installation Check Error: {ex.Message}");
+                return false;
+            }
+        }
+
+        private string? ExtractTokenFromHtml(string html)
+        {
+            try
+            {
+                // Tìm script chứa AnimeVsub function
+                var scriptPattern = @"AnimeVsub\('([^']+)'";
+                var match = System.Text.RegularExpressions.Regex.Match(html, scriptPattern);
+                
+                if (match.Success && match.Groups.Count > 1)
+                {
+                    string token = match.Groups[1].Value;
+                    OnPlaywrightLogMessage(this, $"🔍 Tìm thấy token: {token.Substring(0, Math.Min(20, token.Length))}...");
+                    return token;
+                }
+
+                // Thử pattern khác nếu không tìm thấy
+                var alternativePattern = @"AnimeVsub\(""([^""]+)""";
+                var altMatch = System.Text.RegularExpressions.Regex.Match(html, alternativePattern);
+                
+                if (altMatch.Success && altMatch.Groups.Count > 1)
+                {
+                    string token = altMatch.Groups[1].Value;
+                    OnPlaywrightLogMessage(this, $"🔍 Tìm thấy token (pattern 2): {token.Substring(0, Math.Min(20, token.Length))}...");
+                    return token;
+                }
+
+                OnPlaywrightLogMessage(this, "⚠️ Không tìm thấy token trong script");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                OnPlaywrightError(this, $"Lỗi trích xuất token: {ex.Message}");
+                return null;
+            }
+        }
+
+        private void OnPlaywrightLogMessage(object? sender, string message)
+        {
+            // Cập nhật UI thread-safe
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                Result = message;
+            });
+        }
+
+        private void OnPlaywrightError(object? sender, string error)
+        {
+            // Cập nhật UI thread-safe
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                Result = error;
+            });
+        }
+
+        // Dispose method để cleanup PlaywrightService
+        public void Dispose()
+        {
+            _playwrightService?.Dispose();
         }
 
     }
