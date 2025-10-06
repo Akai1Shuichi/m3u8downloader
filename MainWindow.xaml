@@ -122,15 +122,18 @@
                 <Expander Margin="0,4,0,0" Header="Cài đặt nâng cao">
                     <StackPanel Margin="10">
                         <!--  Preferred Format  -->
-                        <StackPanel Margin="0,0,0,10" Orientation="Vertical" HorizontalAlignment="Left">
+                        <StackPanel
+                            Margin="0,0,0,10"
+                            HorizontalAlignment="Left"
+                            Orientation="Vertical">
                             <TextBlock
                                 Margin="0,0,0,4"
                                 Foreground="White"
                                 Text="Định dạng đầu ra" />
                             <ComboBox
                                 Width="200"
-                                SelectedValuePath="Tag"
-                                SelectedValue="{Binding PreferredFormat, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                                SelectedValue="{Binding PreferredFormat, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                SelectedValuePath="Tag">
                                 <ComboBoxItem Content="MP4 (Video)" Tag="mp4" />
                                 <ComboBoxItem Content="MKV (Video)" Tag="mkv" />
                                 <ComboBoxItem Content="MP3 (Âm thanh)" Tag="mp3" />
@@ -146,7 +149,7 @@
                             <TextBlock
                                 Margin="0,0,0,4"
                                 Foreground="White"
-                                Text="Số luồng" />
+                                Text="Số luồng chạy" />
                             <ui:NumberBox
                                 Width="120"
                                 BorderBrush="DodgerBlue"
@@ -154,8 +157,23 @@
                                 Value="{Binding MaxWorker, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
 
-                        <!--  Headers  -->
+                        <!--  Batch Size  -->
+                        <StackPanel
+                            Margin="0,0,0,10"
+                            HorizontalAlignment="Left"
+                            Orientation="Vertical">
+                            <TextBlock
+                                Margin="0,0,0,4"
+                                Foreground="White"
+                                Text="Số luồng tải m3u8" />
+                            <ui:NumberBox
+                                Width="120"
+                                BorderBrush="DodgerBlue"
+                                Minimum="1"
+                                Value="{Binding BatchSize, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
 
+                        <!--  Headers  -->
                         <StackPanel Orientation="Vertical">
                             <StackPanel Margin="0,0,0,4" Orientation="Horizontal">
                                 <TextBlock

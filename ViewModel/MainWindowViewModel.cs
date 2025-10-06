@@ -88,6 +88,20 @@ namespace m3u8Downloader.ViewModel
             set { _maxWorker = value; OnPropertyChanged(); }
         }
 
+        private int _batchSize = 50;
+        public int BatchSize
+        {
+            get => _batchSize;
+            set { _batchSize = value; OnPropertyChanged(); }
+        }
+
+        private bool _isAnimevietsub = false;
+        public bool IsAnimevietsub
+        {
+            get => _isAnimevietsub;
+            set { _isAnimevietsub = value; OnPropertyChanged(); }
+        }
+
         private string _result;
         public string Result
         {
@@ -162,6 +176,7 @@ namespace m3u8Downloader.ViewModel
                 M3u8Text = _config.M3u8Text;
                 VideoPath = _config.VideoPath;
                 MaxWorker = _config.MaxWorker;
+                BatchSize = _config.BatchSize;
                 Headers = _config.Headers;
                 PreferredFormat = _config.PreferredFormat;
             }
@@ -180,6 +195,7 @@ namespace m3u8Downloader.ViewModel
                 _config.M3u8Text = M3u8Text;
                 _config.VideoPath = VideoPath;
                 _config.MaxWorker = MaxWorker;
+                _config.BatchSize = BatchSize;
                 _config.Headers = Headers;
                 _config.PreferredFormat = PreferredFormat;
 
@@ -316,6 +332,7 @@ namespace m3u8Downloader.ViewModel
                             _playwrightService.ErrorOccurred += OnPlaywrightError;
                         }
 
+                        _playwrightService.BatchSize = BatchSize;
                         bool isInstalled = await CheckPlaywrightInstallationAsync();
                         if (!isInstalled)
                         {
@@ -330,6 +347,10 @@ namespace m3u8Downloader.ViewModel
                             return;
                         }
 
+                        if (_playwrightService != null)
+                        {
+                            _playwrightService.BatchSize = BatchSize;
+                        }
                         var converted = await _playwrightService.ConvertM3U8ContentAsync(inputSource);
                         m3u8TextFromUrl = converted;
                         _httpServer = new LocalHttpServer(converted);
@@ -901,6 +922,7 @@ namespace m3u8Downloader.ViewModel
                     _playwrightService.LogMessage += OnPlaywrightLogMessage;
                     _playwrightService.ErrorOccurred += OnPlaywrightError;
                 }
+                _playwrightService.BatchSize = BatchSize;
 
                 bool isInstalled = await CheckPlaywrightInstallationAsync();
                 if (!isInstalled)

@@ -19,7 +19,7 @@ namespace m3u8Downloader.Services
 
         // Configuration
         private const int REQUEST_DELAY_MS = 500;
-        private const int BATCH_SIZE = 50;
+        public int BatchSize { get; set; } = 50;
         private const int RETRY_ATTEMPTS = 2;
 
         // Progress tracking
@@ -259,8 +259,8 @@ namespace m3u8Downloader.Services
                 _errorCount = 0;
 
                 var allResults = new List<UrlResult>();
-                var batches = SplitIntoBatches(videoUrls, BATCH_SIZE);
-                OnLogMessage($"📦 Chia thành {batches.Count} batches với {BATCH_SIZE} URL mỗi batch");
+                var batches = SplitIntoBatches(videoUrls, BatchSize);
+                OnLogMessage($"📦 Chia thành {batches.Count} batches với {BatchSize} URL mỗi batch");
 
                 // Process lần 1
                 for (int i = 0; i < batches.Count; i++)
@@ -301,7 +301,7 @@ namespace m3u8Downloader.Services
                     _successCount = 0;
                     _errorCount = 0;
 
-                    var retryBatches = SplitIntoBatches(failedUrls, BATCH_SIZE);
+                    var retryBatches = SplitIntoBatches(failedUrls, BatchSize);
                     OnLogMessage($"📦 Chia thành {retryBatches.Count} batches cho retry");
 
                     var retryResults = new List<UrlResult>();
