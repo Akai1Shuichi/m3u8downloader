@@ -18,10 +18,8 @@ namespace m3u8Downloader.Services
         public event EventHandler<string>? ErrorOccurred;
 
         // Configuration
-        private const int MAX_CONCURRENT_REQUESTS = 20;
         private const int REQUEST_DELAY_MS = 500;
-        private const int BATCH_SIZE = 10;
-        private const int TIMEOUT_MS = 10000;
+        private const int BATCH_SIZE = 50;
         private const int RETRY_ATTEMPTS = 2;
 
         // Progress tracking
@@ -225,6 +223,7 @@ namespace m3u8Downloader.Services
 
         /// <summary>
         /// Nhận trực tiếp M3U8 content, convert toàn bộ các URL dạng stream.googleapiscdn.com
+        /// Có retry lần 2 cho các URL failed
         /// </summary>
         public async Task<string?> ConvertM3U8ContentAsync(string m3u8Content)
         {
@@ -236,7 +235,8 @@ namespace m3u8Downloader.Services
 
             try
             {
-                OnLogMessage("🔄 Bắt đầu convert M3U8 content...");
+                // ==================== RETRY LẦN 1 ====================
+                OnLogMessage("🔄 RETRY LẦN 1: Bắt đầu convert M3U8 content...");
 
                 var lines = m3u8Content.Split('\n');
                 var videoUrls = lines
@@ -253,9 +253,16 @@ namespace m3u8Downloader.Services
                     return m3u8Content;
                 }
 
+                // Reset counters
+                _processedCount = 0;
+                _successCount = 0;
+                _errorCount = 0;
+
                 var allResults = new List<UrlResult>();
                 var batches = SplitIntoBatches(videoUrls, BATCH_SIZE);
+                OnLogMessage($"📦 Chia thành {batches.Count} batches với {BATCH_SIZE} URL mỗi batch");
 
+                // Process lần 1
                 for (int i = 0; i < batches.Count; i++)
                 {
                     var batchResults = await ProcessBatchAsync(batches[i], i);
@@ -264,13 +271,78 @@ namespace m3u8Downloader.Services
                         await Task.Delay(REQUEST_DELAY_MS);
                 }
 
+                // Tạo nội dung sau lần 1
                 var urlMapping = allResults
                     .Where(r => r.Success && !string.IsNullOrEmpty(r.FinalUrl))
                     .ToDictionary(r => r.SourceUrl, r => r.FinalUrl!);
 
-                OnLogMessage($"📊 Đã thay thế {urlMapping.Count}/{_totalCount} URL");
+                OnLogMessage($"📊 Lần 1: Đã convert {urlMapping.Count}/{_totalCount} URL");
 
                 string convertedContent = ReplaceUrlsInContent(m3u8Content, urlMapping);
+
+                // ==================== RETRY LẦN 2 ====================
+                OnLogMessage("\n🔄 RETRY LẦN 2: Kiểm tra các URL failed để retry...");
+
+                // Tìm các URL vẫn còn dạng stream.googleapiscdn.com trong converted content
+                var convertedLines = convertedContent.Split('\n');
+                var failedUrls = convertedLines
+                    .Select(l => l.Trim())
+                    .Where(l => l.StartsWith("https://stream.googleapiscdn.com/") && l.EndsWith(".html"))
+                    .Distinct()
+                    .ToList();
+
+                if (failedUrls.Count > 0)
+                {
+                    OnLogMessage($"🔍 Tìm thấy {failedUrls.Count} URL failed cần retry");
+
+                    // Reset counters cho retry
+                    _processedCount = 0;
+                    _totalCount = failedUrls.Count;
+                    _successCount = 0;
+                    _errorCount = 0;
+
+                    var retryBatches = SplitIntoBatches(failedUrls, BATCH_SIZE);
+                    OnLogMessage($"📦 Chia thành {retryBatches.Count} batches cho retry");
+
+                    var retryResults = new List<UrlResult>();
+
+                    // Process lần 2
+                    for (int i = 0; i < retryBatches.Count; i++)
+                    {
+                        var batchResults = await ProcessBatchAsync(retryBatches[i], i);
+                        retryResults.AddRange(batchResults);
+                        if (i < retryBatches.Count - 1)
+                            await Task.Delay(REQUEST_DELAY_MS);
+                    }
+
+                    // Update mapping với kết quả retry
+                    var retryMapping = retryResults
+                        .Where(r => r.Success && !string.IsNullOrEmpty(r.FinalUrl))
+                        .ToDictionary(r => r.SourceUrl, r => r.FinalUrl!);
+
+                    OnLogMessage($"📊 Lần 2: Đã convert thêm {retryMapping.Count}/{failedUrls.Count} URL");
+
+                    // Thay thế lần 2
+                    convertedContent = ReplaceUrlsInContent(convertedContent, retryMapping);
+
+                    // Merge results
+                    allResults.AddRange(retryResults);
+                }
+                else
+                {
+                    OnLogMessage("✅ Không có URL nào cần retry");
+                }
+
+                // ==================== SUMMARY ====================
+                var totalSuccess = allResults.Count(r => r.Success);
+                var totalProcessed = allResults.Count;
+                var successRate = totalProcessed > 0 ? (totalSuccess * 100.0 / totalProcessed) : 0;
+
+                OnLogMessage("\n📊 Tổng kết:");
+                OnLogMessage($"🎯 Tổng số URL đã xử lý: {totalProcessed}");
+                OnLogMessage($"✅ Thành công: {totalSuccess}");
+                OnLogMessage($"❌ Thất bại: {totalProcessed - totalSuccess}");
+                OnLogMessage($"📈 Tỷ lệ thành công: {successRate:F1}%");
 
                 OnLogMessage("✅ Convert hoàn tất");
                 return convertedContent;
@@ -327,58 +399,58 @@ namespace m3u8Downloader.Services
             try
             {
                 var result = await _sharedPage.EvaluateAsync<BrowserResponse>(@"
-            async (targetUrl) => {
-                try {
-                    const fetchOptions = [
-                      {
-                        method: 'GET',
-                        mode: 'cors',
-                        credentials: 'omit',
-                        headers: {
-                          'Accept': '*/*',
-                          'Accept-Language': 'en-US,en;q=0.9',
-                          'Origin': 'https://animevietsub.show',
-                          'Referer': 'https://animevietsub.show/',
-                          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-                        }
-                      },
-                      {
-                        method: 'GET',
-                        mode: 'no-cors',
-                        credentials: 'omit'
-                      }
-                    ];
-
-                    for (let i = 0; i < fetchOptions.length; i++) {
-                      try {
-                        const response = await fetch(targetUrl, fetchOptions[i]);
-                        let responseText = '';
-                        try {
-                          responseText = await response.text();
-                        } catch (e) {
-                          responseText = `[Cannot read response body in ${response.type} mode]`;
-                        }
-
-                        return {
-                          url: targetUrl,
-                          finalUrl: response.url,
-                          status: response.status,
-                          data: responseText,
-                          redirected: response.redirected,
-                          type: response.type,
-                          success: true
-                        };
-                      } catch (error) {
-                        continue;
-                      }
-                    }
-
-                    throw new Error('All fetch options failed');
-                } catch (error) {
-                    return { url: targetUrl, error: error.message, success: false };
+    async (targetUrl) => {
+        try {
+            const fetchOptions = [
+              {
+                method: 'GET',
+                mode: 'cors',
+                credentials: 'omit',
+                headers: {
+                  'Accept': '*/*',
+                  'Accept-Language': 'en-US,en;q=0.9',
+                  'Origin': 'https://animevietsub.show',
+                  'Referer': 'https://animevietsub.show/',
+                  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
                 }
+              },
+              {
+                method: 'GET',
+                mode: 'no-cors',
+                credentials: 'omit'
+              }
+            ];
+
+            for (let i = 0; i < fetchOptions.length; i++) {
+              try {
+                const response = await fetch(targetUrl, fetchOptions[i]);
+                let responseText = '';
+                try {
+                  responseText = await response.text();
+                } catch (e) {
+                  responseText = `[Cannot read response body in ${response.type} mode]`;
+                }
+
+                return {
+                  url: targetUrl,
+                  finalUrl: response.url,
+                  status: response.status,
+                  data: responseText,
+                  redirected: response.redirected,
+                  type: response.type,
+                  success: true
+                };
+              } catch (error) {
+                continue;
+              }
             }
-        ", url);
+
+            throw new Error('All fetch options failed');
+        } catch (error) {
+            return { url: targetUrl, error: error.message, success: false };
+        }
+    }
+", url);
 
                 // Retry 429 với exponential backoff
                 if (result.Status == 429 && retryCount < 2)
