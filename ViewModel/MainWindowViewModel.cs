@@ -103,6 +103,13 @@ namespace m3u8Downloader.ViewModel
             set { _headers = value; OnPropertyChanged(); }
         }
 
+        private string _preferredFormat = "mp4";
+        public string PreferredFormat
+        {
+            get { return _preferredFormat; }
+            set { _preferredFormat = value; OnPropertyChanged(); }
+        }
+
 
         public bool IsDownloading
         {
@@ -156,7 +163,7 @@ namespace m3u8Downloader.ViewModel
                 VideoPath = _config.VideoPath;
                 MaxWorker = _config.MaxWorker;
                 Headers = _config.Headers;
-
+                PreferredFormat = _config.PreferredFormat;
             }
             catch (Exception ex)
             {
@@ -174,6 +181,7 @@ namespace m3u8Downloader.ViewModel
                 _config.VideoPath = VideoPath;
                 _config.MaxWorker = MaxWorker;
                 _config.Headers = Headers;
+                _config.PreferredFormat = PreferredFormat;
 
                 await _configService.SaveSettingsAsync(_config);
             }
@@ -265,8 +273,9 @@ namespace m3u8Downloader.ViewModel
                     headerArgs.Add($"--add-header \"{header.Key}:{header.Value}\"");
                 }
 
-                string outputTemplate = Path.Combine(VideoPath, $"video_{DateTime.Now:yyyyMMdd_HHmmss}.%(ext)s");
-               
+                string prefix = (PreferredFormat == "mp4" || PreferredFormat == "mkv") ? "video" : "audio";
+                string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                string outputTemplate = Path.Combine(VideoPath, $"{prefix}_{timestamp}.%(ext)s");
 
                 // Handle different input types
                 string inputArg;
@@ -340,17 +349,62 @@ namespace m3u8Downloader.ViewModel
                     }
                 }
 
+                // Build format-specific args
+                string formatSelector = "best";
+                string? mergeFormat = null;
+                var postArgs = new List<string>();
+
+                switch ((PreferredFormat ?? "mp4").ToLowerInvariant())
+                {
+                    case "mp3":
+                        // Extract audio as mp3
+                        formatSelector = "bestaudio/best";
+                        postArgs.Add("--extract-audio");
+                        postArgs.Add("--audio-format mp3");
+                        postArgs.Add("--audio-quality 0");
+                        break;
+                    case "m4a":
+                        // Extract audio as m4a (aac)
+                        formatSelector = "bestaudio/best";
+                        postArgs.Add("--extract-audio");
+                        postArgs.Add("--audio-format m4a");
+                        postArgs.Add("--audio-quality 0");
+                        break;
+                    case "mkv":
+                        // Prefer MP4 streams if possible, else best, then merge to MKV
+                        formatSelector = "bestvideo+bestaudio/best";
+                        mergeFormat = "mkv";
+                        break;
+                    case "mp4":
+                    default:
+                        // Prefer mp4 output
+                        formatSelector = "best[ext=mp4]/best";
+                        mergeFormat = "mp4";
+                        break;
+                }
+
                 var argsList = new List<string> {
             inputArg,
             $"-o \"{outputTemplate}\"",
-            "--format \"best[ext=mp4]/best\"",
-            "--merge-output-format mp4",
-            $"--concurrent-fragments \"{MaxWorker}\"",
-            "--fragment-retries 10",
-            "--retries 10",
-            "--no-check-certificate",
-            "--ignore-errors",
+            $"--format \"{formatSelector}\"",
         };
+
+                if (!string.IsNullOrEmpty(mergeFormat))
+                {
+                    argsList.Add($"--merge-output-format {mergeFormat}");
+                }
+
+                // Common stability options
+                argsList.AddRange(new []{
+                    $"--concurrent-fragments \"{MaxWorker}\"",
+                    "--fragment-retries 10",
+                    "--retries 10",
+                    "--no-check-certificate",
+                    "--ignore-errors"
+                });
+
+                // Add post-processing args (audio extraction)
+                argsList.AddRange(postArgs);
 
                 argsList.AddRange(headerArgs);
                 string args = string.Join(" ", argsList);

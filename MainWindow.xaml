@@ -119,8 +119,24 @@
                     </StackPanel>
                 </StackPanel>
 
-                <Expander Margin="0,4,0,0" Header="Cài đặt thông số">
+                <Expander Margin="0,4,0,0" Header="Cài đặt nâng cao">
                     <StackPanel Margin="10">
+                        <!--  Preferred Format  -->
+                        <StackPanel Margin="0,0,0,10" Orientation="Vertical" HorizontalAlignment="Left">
+                            <TextBlock
+                                Margin="0,0,0,4"
+                                Foreground="White"
+                                Text="Định dạng đầu ra" />
+                            <ComboBox
+                                Width="200"
+                                SelectedValuePath="Tag"
+                                SelectedValue="{Binding PreferredFormat, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                                <ComboBoxItem Content="MP4 (Video)" Tag="mp4" />
+                                <ComboBoxItem Content="MKV (Video)" Tag="mkv" />
+                                <ComboBoxItem Content="MP3 (Âm thanh)" Tag="mp3" />
+                                <ComboBoxItem Content="M4A/AAC (Âm thanh)" Tag="m4a" />
+                            </ComboBox>
+                        </StackPanel>
 
                         <!--  Max Worker  -->
                         <StackPanel
