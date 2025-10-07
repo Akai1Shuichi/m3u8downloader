@@ -33,6 +33,25 @@ namespace m3u8Downloader.ViewModel
             set { _url = value; OnPropertyChanged(); }
         }
 
+        // Helper method to extract domain from URL
+        private string ExtractDomain(string url)
+        {
+            if (string.IsNullOrEmpty(url)) return "";
+            
+            try
+            {
+                var uri = new Uri(url);
+                return uri.Host;
+            }
+            catch
+            {
+                return "";
+            }
+        }
+
+        // Property to get current domain
+        public string CurrentDomain => ExtractDomain(Url);
+
         // Input mode properties
         private bool _isUrlMode = true;
         public bool IsUrlMode
@@ -298,7 +317,8 @@ namespace m3u8Downloader.ViewModel
                 if (IsUrlMode)
                 {
                     inputArg = $"\"{inputSource}\"";
-                    if (Url.Contains("animevietsub")) {
+                    var domain = CurrentDomain;
+                    if (!string.IsNullOrEmpty(domain) && domain.Contains("anime")) {
                         // Start HTTP server
                         try
                         {
@@ -331,8 +351,9 @@ namespace m3u8Downloader.ViewModel
                             _playwrightService.LogMessage += OnPlaywrightLogMessage;
                             _playwrightService.ErrorOccurred += OnPlaywrightError;
                         }
-
+                        var domain = CurrentDomain;
                         _playwrightService.BatchSize = BatchSize;
+                        _playwrightService.TargetDomain = domain;
                         bool isInstalled = await CheckPlaywrightInstallationAsync();
                         if (!isInstalled)
                         {
@@ -904,13 +925,14 @@ namespace m3u8Downloader.ViewModel
         {
             if (string.IsNullOrWhiteSpace(Url))
             {
-                Result = "❌ Vui lòng nhập URL animevietsub";
+                Result = "❌ Vui lòng nhập URL";
                 return;
             }
 
-            if (!Url.Contains("animevietsub"))
+            var domain = CurrentDomain;
+            if (string.IsNullOrEmpty(domain) || !domain.Contains("anime"))
             {
-                Result = "❌ URL phải thuộc domain animevietsub.show";
+                Result = $"❌ URL phải thuộc domain anime (hiện tại: {domain})";
                 return;
             }
 
@@ -923,6 +945,7 @@ namespace m3u8Downloader.ViewModel
                     _playwrightService.ErrorOccurred += OnPlaywrightError;
                 }
                 _playwrightService.BatchSize = BatchSize;
+                _playwrightService.TargetDomain = domain;
 
                 bool isInstalled = await CheckPlaywrightInstallationAsync();
                 if (!isInstalled)
@@ -965,7 +988,7 @@ namespace m3u8Downloader.ViewModel
                     return;
                 }
 
-                string apiUrl = "https://animevietsub.show/ajax/player";
+                string apiUrl = $"https://{domain}/ajax/player";
 
                 using (var httpClient = new HttpClient())
                 {
@@ -975,12 +998,12 @@ namespace m3u8Downloader.ViewModel
                     httpClient.DefaultRequestHeaders.Accept.Clear();
                     httpClient.DefaultRequestHeaders.Accept.ParseAdd("application/json, text/javascript, */*; q=0.01");
                     httpClient.DefaultRequestHeaders.TryAddWithoutValidation("x-requested-with", "XMLHttpRequest");
-                    httpClient.DefaultRequestHeaders.TryAddWithoutValidation("origin", "https://animevietsub.show");
+                    httpClient.DefaultRequestHeaders.TryAddWithoutValidation("origin", $"https://{domain}");
                     httpClient.DefaultRequestHeaders.TryAddWithoutValidation("referer", Url);
                     httpClient.DefaultRequestHeaders.TryAddWithoutValidation("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36");
 
                     // Try attach cookies from Playwright session
-                    var cookies = await _playwrightService.GetCookiesHeaderForUrlAsync("https://animevietsub.show/");
+                    var cookies = await _playwrightService.GetCookiesHeaderForUrlAsync($"https://{domain}/");
                     if (!string.IsNullOrEmpty(cookies))
                     {
                         httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Cookie", cookies);

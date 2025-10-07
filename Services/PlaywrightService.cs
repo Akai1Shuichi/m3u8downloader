@@ -20,6 +20,7 @@ namespace m3u8Downloader.Services
         // Configuration
         private const int REQUEST_DELAY_MS = 500;
         public int BatchSize { get; set; } = 50;
+        public string TargetDomain { get; set; } = "animevietsub.show";
         private const int RETRY_ATTEMPTS = 2;
 
         // Progress tracking
@@ -165,8 +166,8 @@ namespace m3u8Downloader.Services
                     {
                         headers["Accept"] = "*/*";
                         headers["Accept-Language"] = "en-US,en;q=0.9";
-                        headers["Origin"] = "https://animevietsub.show";
-                        headers["Referer"] = "https://animevietsub.show/";
+                        headers["Origin"] = $"https://{TargetDomain}";
+                        headers["Referer"] = $"https://{TargetDomain}/";
                         headers["Sec-Fetch-Dest"] = "empty";
                         headers["Sec-Fetch-Mode"] = "cors";
                         headers["Sec-Fetch-Site"] = "cross-site";
@@ -183,7 +184,7 @@ namespace m3u8Downloader.Services
                 OnLogMessage("🌍 Establishing browser context...");
                 try
                 {
-                    await _sharedPage.GotoAsync("https://animevietsub.show/", new PageGotoOptions
+                    await _sharedPage.GotoAsync($"https://{TargetDomain}/", new PageGotoOptions
                     {
                         WaitUntil = WaitUntilState.DOMContentLoaded,
                         Timeout = 30000
@@ -395,62 +396,58 @@ namespace m3u8Downloader.Services
         {
             if (_sharedPage == null)
                 throw new InvalidOperationException("Page not initialized");
-
             try
             {
-                var result = await _sharedPage.EvaluateAsync<BrowserResponse>(@"
-    async (targetUrl) => {
-        try {
-            const fetchOptions = [
-              {
-                method: 'GET',
-                mode: 'cors',
-                credentials: 'omit',
-                headers: {
-                  'Accept': '*/*',
-                  'Accept-Language': 'en-US,en;q=0.9',
-                  'Origin': 'https://animevietsub.show',
-                  'Referer': 'https://animevietsub.show/',
-                  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-                }
-              },
-              {
-                method: 'GET',
-                mode: 'no-cors',
-                credentials: 'omit'
-              }
-            ];
-
-            for (let i = 0; i < fetchOptions.length; i++) {
-              try {
-                const response = await fetch(targetUrl, fetchOptions[i]);
-                let responseText = '';
-                try {
-                  responseText = await response.text();
-                } catch (e) {
-                  responseText = `[Cannot read response body in ${response.type} mode]`;
-                }
-
-                return {
-                  url: targetUrl,
-                  finalUrl: response.url,
-                  status: response.status,
-                  data: responseText,
-                  redirected: response.redirected,
-                  type: response.type,
-                  success: true
-                };
-              } catch (error) {
-                continue;
-              }
-            }
-
-            throw new Error('All fetch options failed');
-        } catch (error) {
-            return { url: targetUrl, error: error.message, success: false };
-        }
-    }
-", url);
+                var result = await _sharedPage.EvaluateAsync<BrowserResponse>($@"
+                async (targetUrl) => {{
+                    try {{
+                        const fetchOptions = [
+                          {{
+                            method: 'GET',
+                            mode: 'cors',
+                            credentials: 'omit',
+                            headers: {{
+                              'Accept': '*/*',
+                              'Accept-Language': 'en-US,en;q=0.9',
+                              'Origin': 'https://{TargetDomain}',
+                              'Referer': 'https://{TargetDomain}/',
+                              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                            }}
+                          }},
+                          {{
+                            method: 'GET',
+                            mode: 'no-cors',
+                            credentials: 'omit'
+                          }}
+                        ];
+                        for (let i = 0; i < fetchOptions.length; i++) {{
+                          try {{
+                            const response = await fetch(targetUrl, fetchOptions[i]);
+                            let responseText = '';
+                            try {{
+                              responseText = await response.text();
+                            }} catch (e) {{
+                              responseText = `[Cannot read response body in ${{response.type}} mode]`;
+                            }}
+                            return {{
+                              url: targetUrl,
+                              finalUrl: response.url,
+                              status: response.status,
+                              data: responseText,
+                              redirected: response.redirected,
+                              type: response.type,
+                              success: true
+                            }};
+                          }} catch (error) {{
+                            continue;
+                          }}
+                        }}
+                        throw new Error('All fetch options failed');
+                    }} catch (error) {{
+                        return {{ url: targetUrl, error: error.message, success: false }};
+                    }}
+                }}
+                ", url);
 
                 // Retry 429 với exponential backoff
                 if (result.Status == 429 && retryCount < 2)
@@ -477,7 +474,6 @@ namespace m3u8Downloader.Services
                     await Task.Delay(1000);
                     return await MakeBrowserRequestAsync(url, retryCount + 1);
                 }
-
                 return new BrowserResponse { Url = url, Error = ex.Message, Success = false };
             }
         }
@@ -544,9 +540,9 @@ namespace m3u8Downloader.Services
                 return null;
             }
 
-            if (!url.Contains("animevietsub"))
+            if (!url.Contains(TargetDomain))
             {
-                OnLogMessage("⛔ URL không thuộc animevietsub, bỏ qua tải HTML.");
+                OnLogMessage($"⛔ URL không thuộc {TargetDomain}, bỏ qua tải HTML.");
                 return null;
             }
 
