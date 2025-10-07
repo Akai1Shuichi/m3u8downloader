@@ -22,6 +22,22 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
+    - name: Resolve version
+      id: set-version
+      shell: pwsh
+      run: |
+        $ref = "${{ github.ref }}"
+        if ($ref -like "refs/tags/*") {
+          $refName = "${{ github.ref_name }}"
+        } else {
+          $refName = "${{ github.event.inputs.version }}"
+          if (-not $refName) { $refName = 'v1.0.0' }
+        }
+        $plain = $refName -replace '^v',''
+        Write-Host "Resolved version: ref=$refName, plain=$plain"
+        "ref=$refName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+        "plain=$plain" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
@@ -52,11 +68,7 @@ jobs:
         Copy-Item -Path "publish/win-x64/*" -Destination "release/" -Recurse -Force
         
         # Create ZIP package
-        $version = if ($env:GITHUB_REF -like "refs/tags/*") { 
-          $env:GITHUB_REF -replace "refs/tags/", "" 
-        } else { 
-          "${{ github.event.inputs.version || 'v1.0.0' }}"
-        }
+        $version = "${{ steps.set-version.outputs.ref }}"
         
         Write-Host "Creating package for version: $version"
         
@@ -70,15 +82,14 @@ jobs:
     - name: Upload release artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: m3u8Downloader-${{ github.event.inputs.version || github.ref_name }}
+        name: m3u8Downloader-${{ steps.set-version.outputs.ref }}
         path: |
-          m3u8Downloader-${{ github.event.inputs.version || github.ref_name }}.zip
+          m3u8Downloader-${{ steps.set-version.outputs.ref }}.zip
           release/
     
     - name: Ensure changelog section exists
       run: |
-        $refVer = if ($env:GITHUB_REF -like "refs/tags/*") { "$env:GITHUB_REF" -replace "refs/tags/", "" } else { "${{ github.event.inputs.version }}" }
-        $version = $refVer -replace '^v',''
+        $version = "${{ steps.set-version.outputs.plain }}"
         $file = "CHANGELOG.md"
 
         if (-not (Test-Path $file)) {
@@ -89,15 +100,14 @@ jobs:
           $lines | Out-File $file -Encoding UTF8
         } elseif (-not (Select-String -Path $file -Pattern "## \[$version\]" -Quiet)) {
           Write-Host "CHANGELOG.md found but missing section for $version — adding it."
-          Add-Content -Path $file -Value "`n## [$version] - $(Get-Date -Format 'yyyy-MM-dd')`n- Auto generated entry.`n"
+          Add-Content -Path $file -Value "`n## [$version] - $(Get-Date -Format 'yyyy-MM-dd')`n- Auto generated entry.`n" -Encoding UTF8
         }
     
     - name: Generate release notes from CHANGELOG.md
       id: gen-notes
       run: |
-        # Determine version (strip leading 'v' if present)
-        $refVer = if ($env:GITHUB_REF -like "refs/tags/*") { "$env:GITHUB_REF" -replace "refs/tags/", "" } else { "${{ github.event.inputs.version }}" }
-        $version = $refVer -replace '^v',''
+        # Use resolved version (plain)
+        $version = "${{ steps.set-version.outputs.plain }}"
         Write-Host "Using version: $version"
 
         $changelogPath = "CHANGELOG.md"
@@ -123,9 +133,7 @@ jobs:
         $outFile = "RELEASE_BODY.md"
         Set-Content -Path $outFile -Value $body -Encoding UTF8
 
-        # Also expose short output (in case needed)
-        $safeBody = $body -replace "`r`n","\n" -replace "`n","\n"
-        "notes=$safeBody" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+        Write-Host "Release notes written to $outFile"
           
     - name: Check if release exists
       if: startsWith(github.ref, 'refs/tags/')
