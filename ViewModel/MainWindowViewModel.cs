@@ -107,7 +107,7 @@ namespace m3u8Downloader.ViewModel
             set { _maxWorker = value; OnPropertyChanged(); }
         }
 
-        private int _batchSize = 50;
+        private int _batchSize = 10;
         public int BatchSize
         {
             get => _batchSize;

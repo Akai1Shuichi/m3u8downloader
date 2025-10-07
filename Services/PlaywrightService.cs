@@ -19,7 +19,7 @@ namespace m3u8Downloader.Services
 
         // Configuration
         private const int REQUEST_DELAY_MS = 500;
-        public int BatchSize { get; set; } = 50;
+        public int BatchSize { get; set; } = 10;
         public string TargetDomain { get; set; } = "animevietsub.show";
         private const int RETRY_ATTEMPTS = 2;
 
@@ -236,104 +236,85 @@ namespace m3u8Downloader.Services
 
             try
             {
-                // ==================== RETRY LẦN 1 ====================
-                OnLogMessage("🔄 RETRY LẦN 1: Bắt đầu convert M3U8 content...");
-
-                var lines = m3u8Content.Split('\n');
-                var videoUrls = lines
-                    .Select(l => l.Trim())
-                    .Where(l => l.StartsWith("https://stream.googleapiscdn.com/") && l.EndsWith(".html"))
-                    .ToList();
-
-                _totalCount = videoUrls.Count;
-                OnLogMessage($"🔍 Tìm thấy {_totalCount} URL cần xử lý");
-
-                if (_totalCount == 0)
+                // Helper: extract target URLs from content
+                List<string> ExtractTargetUrls(string content)
                 {
-                    OnLogMessage("✅ Không có URL nào cần convert, trả lại nội dung gốc");
-                    return m3u8Content;
+                    return content.Split('\n')
+                        .Select(l => l.Trim())
+                        .Where(l => l.StartsWith("https://stream.googleapiscdn.com/") && l.EndsWith(".html"))
+                        .Distinct()
+                        .ToList();
                 }
-
-                // Reset counters
-                _processedCount = 0;
-                _successCount = 0;
-                _errorCount = 0;
 
                 var allResults = new List<UrlResult>();
-                var batches = SplitIntoBatches(videoUrls, BatchSize);
-                OnLogMessage($"📦 Chia thành {batches.Count} batches với {BatchSize} URL mỗi batch");
+                string convertedContent = m3u8Content;
 
-                // Process lần 1
-                for (int i = 0; i < batches.Count; i++)
+                // Up to 3 attempts, avoiding duplicated code between attempts
+                for (int attempt = 1; attempt <= 3; attempt++)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    var batchResults = await ProcessBatchAsync(batches[i], i);
-                    allResults.AddRange(batchResults);
-                    if (i < batches.Count - 1)
-                        await Task.Delay(REQUEST_DELAY_MS, cancellationToken);
-                }
+                    var targetUrls = attempt == 1
+                        ? ExtractTargetUrls(m3u8Content)
+                        : ExtractTargetUrls(convertedContent);
 
-                // Tạo nội dung sau lần 1
-                var urlMapping = allResults
-                    .Where(r => r.Success && !string.IsNullOrEmpty(r.FinalUrl))
-                    .ToDictionary(r => r.SourceUrl, r => r.FinalUrl!);
+                    if (attempt == 1)
+                        OnLogMessage("🔄 RETRY LẦN 1: Bắt đầu convert M3U8 content...");
+                    else
+                        OnLogMessage($"\n🔄 RETRY LẦN {attempt}: Kiểm tra các URL failed để retry...");
 
-                OnLogMessage($"📊 Lần 1: Đã convert {urlMapping.Count}/{_totalCount} URL");
+                    if (targetUrls.Count == 0)
+                    {
+                        if (attempt == 1)
+                            OnLogMessage("✅ Không có URL nào cần convert, trả lại nội dung gốc");
+                        else
+                            OnLogMessage("✅ Không có URL nào cần retry");
+                        if (attempt == 1)
+                            return m3u8Content;
+                        break;
+                    }
 
-                string convertedContent = ReplaceUrlsInContent(m3u8Content, urlMapping);
-
-                // ==================== RETRY LẦN 2 ====================
-                OnLogMessage("\n🔄 RETRY LẦN 2: Kiểm tra các URL failed để retry...");
-
-                // Tìm các URL vẫn còn dạng stream.googleapiscdn.com trong converted content
-                var convertedLines = convertedContent.Split('\n');
-                var failedUrls = convertedLines
-                    .Select(l => l.Trim())
-                    .Where(l => l.StartsWith("https://stream.googleapiscdn.com/") && l.EndsWith(".html"))
-                    .Distinct()
-                    .ToList();
-
-                if (failedUrls.Count > 0)
-                {
-                    OnLogMessage($"🔍 Tìm thấy {failedUrls.Count} URL failed cần retry");
-
-                    // Reset counters cho retry
+                    // Reset counters per attempt
                     _processedCount = 0;
-                    _totalCount = failedUrls.Count;
+                    _totalCount = targetUrls.Count;
                     _successCount = 0;
                     _errorCount = 0;
 
-                    var retryBatches = SplitIntoBatches(failedUrls, BatchSize);
-                    OnLogMessage($"📦 Chia thành {retryBatches.Count} batches cho retry");
+                    var batches = SplitIntoBatches(targetUrls, BatchSize);
+                    if (attempt == 1)
+                        OnLogMessage($"📦 Chia thành {batches.Count} batches với {BatchSize} URL mỗi batch");
+                    else
+                        OnLogMessage($"📦 Chia thành {batches.Count} batches cho retry");
 
-                    var retryResults = new List<UrlResult>();
-
-                    // Process lần 2
-                    for (int i = 0; i < retryBatches.Count; i++)
+                    var attemptResults = new List<UrlResult>();
+                    for (int i = 0; i < batches.Count; i++)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
-                        var batchResults = await ProcessBatchAsync(retryBatches[i], i);
-                        retryResults.AddRange(batchResults);
-                        if (i < retryBatches.Count - 1)
+                        var batchResults = await ProcessBatchAsync(batches[i], i);
+                        attemptResults.AddRange(batchResults);
+                        if (i < batches.Count - 1)
                             await Task.Delay(REQUEST_DELAY_MS, cancellationToken);
                     }
 
-                    // Update mapping với kết quả retry
-                    var retryMapping = retryResults
+                    // Update mapping for this attempt
+                    var attemptMapping = attemptResults
                         .Where(r => r.Success && !string.IsNullOrEmpty(r.FinalUrl))
                         .ToDictionary(r => r.SourceUrl, r => r.FinalUrl!);
 
-                    OnLogMessage($"📊 Lần 2: Đã convert thêm {retryMapping.Count}/{failedUrls.Count} URL");
+                    if (attempt == 1)
+                        OnLogMessage($"📊 Lần 1: Đã convert {attemptMapping.Count}/{_totalCount} URL");
+                    else
+                        OnLogMessage($"📊 Lần {attempt}: Đã convert thêm {attemptMapping.Count}/{_totalCount} URL");
 
-                    // Thay thế lần 2
-                    convertedContent = ReplaceUrlsInContent(convertedContent, retryMapping);
+                    // Replace content and merge results
+                    convertedContent = ReplaceUrlsInContent(convertedContent, attemptMapping);
+                    allResults.AddRange(attemptResults);
 
-                    // Merge results
-                    allResults.AddRange(retryResults);
-                }
-                else
-                {
-                    OnLogMessage("✅ Không có URL nào cần retry");
+                    // If nothing failed this attempt, stop early
+                    var remainingAfterAttempt = ExtractTargetUrls(convertedContent).Count;
+                    if (remainingAfterAttempt == 0)
+                    {
+                        OnLogMessage("✅ Tất cả URL đã được convert, dừng retry sớm");
+                        break;
+                    }
                 }
 
                 // ==================== SUMMARY ====================
@@ -378,7 +359,15 @@ namespace m3u8Downloader.Services
                     };
 
                     _processedCount++;
-                    if (result.Success) _successCount++; else _errorCount++;
+                    //if (result.Success) _successCount++; else _errorCount++;
+                    if (url != response.FinalUrl)
+                    {
+                        _successCount++;
+                    }
+                    else if (url == response.FinalUrl)
+                    {
+                        _errorCount++;
+                    }
                     UpdateProgress();
                     return result;
                 }
