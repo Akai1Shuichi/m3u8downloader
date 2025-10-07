@@ -173,7 +173,7 @@ namespace m3u8Downloader.ViewModel
             DownloadCommand = new RelayCommand(async _ => await Download());
             CheckSizeCommand = new RelayCommand(_ => CheckSize());
             BrowseFolderCommand = new RelayCommand(_ => BrowseFolder());
-            PauseCommand = new RelayCommand(_ => PauseDownload());
+            PauseCommand = new RelayCommand(async _ => await PauseDownloadAsync());
             OpenDonateCommand = new RelayCommand(_ => OpenDonate());
 
             // Đăng ký event handlers cho PlaywrightService
@@ -372,7 +372,7 @@ namespace m3u8Downloader.ViewModel
                         {
                             _playwrightService.BatchSize = BatchSize;
                         }
-                        var converted = await _playwrightService.ConvertM3U8ContentAsync(inputSource);
+                        var converted = await _playwrightService.ConvertM3U8ContentAsync(inputSource, _cancellationTokenSource.Token);
                         m3u8TextFromUrl = converted;
                         _httpServer = new LocalHttpServer(converted);
                         _httpServer.Start();
@@ -559,7 +559,7 @@ namespace m3u8Downloader.ViewModel
             }
         }
 
-        private void PauseDownload()
+        private async Task PauseDownloadAsync()
         {
             try
             {
@@ -583,6 +583,17 @@ namespace m3u8Downloader.ViewModel
                     _httpServer.Stop();
                     _httpServer.Dispose();
                     _httpServer = null;
+                }
+
+                // Dispose Playwright if initialized (await async close to avoid UI freeze)
+                if (_playwrightService != null)
+                {
+                    try
+                    {
+                        await Task.Run(() => _playwrightService.Dispose());
+                    }
+                    catch { }
+                    _playwrightService = null;
                 }
 
                 // Xóa tất cả các file tạm (.part, .part-Frag, .ytdl)
@@ -1058,7 +1069,7 @@ namespace m3u8Downloader.ViewModel
                             if (playlist != null && !string.IsNullOrEmpty(playlist.Content))
                             {
                                 // Optional: convert redirecting googleapis URLs to final URLs
-                                var converted = await _playwrightService.ConvertM3U8ContentAsync(playlist.Content);
+                                var converted = await _playwrightService.ConvertM3U8ContentAsync(playlist.Content, _cancellationTokenSource.Token);
                                 m3u8TextFromUrl = converted;
                                 Result = "✅ Đã xử lý và chuyển đổi M3U8 thành công!";
                             }

@@ -226,7 +226,7 @@ namespace m3u8Downloader.Services
         /// Nhận trực tiếp M3U8 content, convert toàn bộ các URL dạng stream.googleapiscdn.com
         /// Có retry lần 2 cho các URL failed
         /// </summary>
-        public async Task<string?> ConvertM3U8ContentAsync(string m3u8Content)
+        public async Task<string?> ConvertM3U8ContentAsync(string m3u8Content, System.Threading.CancellationToken cancellationToken = default)
         {
             if (_sharedPage == null)
             {
@@ -266,10 +266,11 @@ namespace m3u8Downloader.Services
                 // Process lần 1
                 for (int i = 0; i < batches.Count; i++)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     var batchResults = await ProcessBatchAsync(batches[i], i);
                     allResults.AddRange(batchResults);
                     if (i < batches.Count - 1)
-                        await Task.Delay(REQUEST_DELAY_MS);
+                        await Task.Delay(REQUEST_DELAY_MS, cancellationToken);
                 }
 
                 // Tạo nội dung sau lần 1
@@ -310,10 +311,11 @@ namespace m3u8Downloader.Services
                     // Process lần 2
                     for (int i = 0; i < retryBatches.Count; i++)
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
                         var batchResults = await ProcessBatchAsync(retryBatches[i], i);
                         retryResults.AddRange(batchResults);
                         if (i < retryBatches.Count - 1)
-                            await Task.Delay(REQUEST_DELAY_MS);
+                            await Task.Delay(REQUEST_DELAY_MS, cancellationToken);
                     }
 
                     // Update mapping với kết quả retry
