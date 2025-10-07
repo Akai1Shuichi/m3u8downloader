@@ -8,7 +8,7 @@
     xmlns:vm="clr-namespace:m3u8Downloader.ViewModel"
     Title="MultiStream Downloader"
     Width="700"
-    Height="648"
+    Height="700"
     ui:Design.Background="{DynamicResource ApplicationBackgroundBrush}"
     ui:Design.Foreground="{DynamicResource TextFillColorPrimaryBrush}"
     ExtendsContentIntoTitleBar="True"
@@ -55,7 +55,7 @@
                         <RadioButton Content="Nhập URL" IsChecked="{Binding IsUrlMode, Mode=TwoWay}" />
                         <RadioButton
                             Margin="15,0,0,0"
-                            Content="Nội dung"
+                            Content="Nội dung m3u8"
                             IsChecked="{Binding IsTextMode, Mode=TwoWay}" />
                     </StackPanel>
 
@@ -175,62 +175,10 @@
 
                         <!--  Headers  -->
                         <StackPanel Orientation="Vertical">
-                            <StackPanel Margin="0,0,0,4" Orientation="Horizontal">
-                                <TextBlock
-                                    VerticalAlignment="Center"
-                                    Foreground="White"
-                                    Text="Headers" />
-                                <TextBlock Margin="6,0,0,0" VerticalAlignment="Center">
-                                    <Hyperlink
-                                        NavigateUri="https://chromewebstore.google.com/search/B%E1%BA%AFt%20Link%20Phim"
-                                        RequestNavigate="Hyperlink_RequestNavigate"
-                                        TextDecorations="{x:Null}"
-                                        ToolTip="Cài extension 'Bắt Link Phim' để tự động lấy headers">
-                                        <Border
-                                            Width="18"
-                                            Height="18"
-                                            HorizontalAlignment="Center"
-                                            VerticalAlignment="Center"
-                                            Background="Transparent"
-                                            BorderBrush="DodgerBlue"
-                                            BorderThickness="1"
-                                            CornerRadius="9"
-                                            Cursor="Hand">
-                                            <Border.Style>
-                                                <Style TargetType="Border">
-                                                    <Setter Property="Background" Value="Transparent" />
-                                                    <Setter Property="BorderBrush" Value="DodgerBlue" />
-                                                    <Style.Triggers>
-                                                        <Trigger Property="IsMouseOver" Value="True">
-                                                            <Setter Property="Background" Value="DodgerBlue" />
-                                                            <Setter Property="BorderBrush" Value="DodgerBlue" />
-                                                        </Trigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </Border.Style>
-
-                                            <TextBlock
-                                                HorizontalAlignment="Center"
-                                                VerticalAlignment="Center"
-                                                FontSize="12"
-                                                FontWeight="Bold"
-                                                Text="?">
-                                                <TextBlock.Style>
-                                                    <Style TargetType="TextBlock">
-                                                        <Setter Property="Foreground" Value="DodgerBlue" />
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Border}}" Value="True">
-                                                                <Setter Property="Foreground" Value="White" />
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </TextBlock.Style>
-                                            </TextBlock>
-                                        </Border>
-                                    </Hyperlink>
-                                </TextBlock>
-
-                            </StackPanel>
+                            <TextBlock
+                                Margin="0,0,0,4"
+                                Foreground="White"
+                                Text="Headers" />
                             <ui:TextBox
                                 Height="200"
                                 AcceptsReturn="True"
@@ -292,75 +240,112 @@
 
                 </StackPanel>
 
+
+
                 <!--  Footer  -->
                 <Grid Margin="0,30,0,0" HorizontalAlignment="Stretch">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
 
-                    <!--  Bên trái: Donate button  -->
+                    <!--  Extension Link  -->
                     <StackPanel
-                        Grid.Column="0"
+                        Grid.Row="0"
+                        Margin="0,30,0,0"
                         HorizontalAlignment="Left"
-                        VerticalAlignment="Center"
                         Orientation="Horizontal">
-                        <ui:Button
-                            Width="120"
-                            Command="{Binding OpenDonateCommand}"
-                            Style="{StaticResource DonateButton}">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Margin="0,0,6,0" Text="❤" />
-                                <TextBlock Text="Donate" />
-                            </StackPanel>
-                        </ui:Button>
-                    </StackPanel>
-
-                    <!--  Bên phải: Socials  -->
-                    <StackPanel
-                        Grid.Column="2"
-                        HorizontalAlignment="Right"
-                        VerticalAlignment="Center"
-                        Orientation="Horizontal">
-                        <!--  Facebook  -->
-                        <Image
-                            Width="16"
-                            Height="16"
-                            Source="Resource/Image/facebook.png"
-                            Stretch="Uniform" />
                         <TextBlock
-                            Margin="6,0,12,0"
+                            VerticalAlignment="Center"
+                            Foreground="White"
+                            Text="💡 Cài extension " />
+                        <TextBlock
+                            VerticalAlignment="Center"
                             FontWeight="SemiBold"
                             Foreground="DodgerBlue">
                             <Hyperlink
-                                NavigateUri="https://www.facebook.com/profile.php?id=61567027726244"
+                                NavigateUri="https://chromewebstore.google.com/detail/b%E1%BA%AFt-link-phim/kjhnhjbmbfbocolepmagbbgnakbjlhcg"
                                 RequestNavigate="Hyperlink_RequestNavigate"
                                 TextDecorations="{x:Null}"
-                                ToolTip="Fanpage : Thích Lập Trình">
-                                Fanpage : Thích Lập Trình
+                                ToolTip="https://chromewebstore.google.com/detail/b%E1%BA%AFt-link-phim/kjhnhjbmbfbocolepmagbbgnakbjlhcg">
+                                Bắt Link Phim
                             </Hyperlink>
                         </TextBlock>
-
-                        <!--  TikTok  -->
-                        <Image
-                            Width="16"
-                            Height="16"
-                            Source="Resource/Image/tiktok.png"
-                            Stretch="Uniform" />
                         <TextBlock
-                            Margin="6,0,0,0"
-                            FontWeight="SemiBold"
-                            Foreground="DodgerBlue">
-                            <Hyperlink
-                                NavigateUri="https://www.tiktok.com/@trtoantech"
-                                RequestNavigate="Hyperlink_RequestNavigate"
-                                TextDecorations="{x:Null}"
-                                ToolTip="Tiktok: @trtoantech">
-                                Tiktok: @trtoantech
-                            </Hyperlink>
-                        </TextBlock>
+                            VerticalAlignment="Center"
+                            Foreground="White"
+                            Text=" để tự động lấy link phim, headers" />
                     </StackPanel>
+
+                    <Grid Grid.Row="1" Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <!--  Bên trái: Donate button  -->
+                        <StackPanel
+                            Grid.Column="0"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center"
+                            Orientation="Horizontal">
+                            <ui:Button
+                                Width="120"
+                                Command="{Binding OpenDonateCommand}"
+                                Style="{StaticResource DonateButton}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Margin="0,0,6,0" Text="❤" />
+                                    <TextBlock Text="Donate" />
+                                </StackPanel>
+                            </ui:Button>
+                        </StackPanel>
+
+                        <!--  Bên phải: Socials  -->
+                        <StackPanel
+                            Grid.Column="2"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Center"
+                            Orientation="Horizontal">
+                            <!--  Facebook  -->
+                            <Image
+                                Width="16"
+                                Height="16"
+                                Source="Resource/Image/facebook.png"
+                                Stretch="Uniform" />
+                            <TextBlock
+                                Margin="6,0,12,0"
+                                FontWeight="SemiBold"
+                                Foreground="DodgerBlue">
+                                <Hyperlink
+                                    NavigateUri="https://www.facebook.com/profile.php?id=61567027726244"
+                                    RequestNavigate="Hyperlink_RequestNavigate"
+                                    TextDecorations="{x:Null}"
+                                    ToolTip="Fanpage : Thích Lập Trình">
+                                    Fanpage : Thích Lập Trình
+                                </Hyperlink>
+                            </TextBlock>
+
+                            <!--  TikTok  -->
+                            <Image
+                                Width="16"
+                                Height="16"
+                                Source="Resource/Image/tiktok.png"
+                                Stretch="Uniform" />
+                            <TextBlock
+                                Margin="6,0,0,0"
+                                FontWeight="SemiBold"
+                                Foreground="DodgerBlue">
+                                <Hyperlink
+                                    NavigateUri="https://www.tiktok.com/@trtoantech"
+                                    RequestNavigate="Hyperlink_RequestNavigate"
+                                    TextDecorations="{x:Null}"
+                                    ToolTip="Tiktok: @trtoantech">
+                                    Tiktok: @trtoantech
+                                </Hyperlink>
+                            </TextBlock>
+                        </StackPanel>
+                    </Grid>
                 </Grid>
 
             </StackPanel>
