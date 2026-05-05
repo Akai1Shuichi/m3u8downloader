@@ -301,16 +301,16 @@ namespace m3u8Downloader.ViewModel
             try
             {
                 string ytDlpPath = Path.Combine(AppContext.BaseDirectory, "Tools", "yt-dlp", "yt-dlp.exe");
+                string ffmpegPath = Path.Combine(AppContext.BaseDirectory, "Tools", "ffmpeg", "ffmpeg.exe");
 
                 if (!File.Exists(ytDlpPath))
                 {
-                    Result = "❌ Không tìm thấy file .exe!";
+                    Result = "❌ Không tìm thấy file yt-dlp.exe!";
                     IsDownloading = false;
                     return;
                 }
 
                 var headersDict = ParseHeaders(Headers);
-
                 var headerArgs = new List<string>();
                 foreach (var header in headersDict)
                 {
@@ -454,10 +454,15 @@ namespace m3u8Downloader.ViewModel
                 }
 
                 var argsList = new List<string> {
-            inputArg,
-            $"-o \"{outputTemplate}\"",
-            $"--format \"{formatSelector}\"",
-        };
+                    inputArg,
+                    $"-o \"{outputTemplate}\"",
+                    $"--format \"{formatSelector}\"",
+                };
+
+                if (File.Exists(ffmpegPath))
+                {
+                    argsList.Add($"--ffmpeg-location \"{ffmpegPath}\"");
+                }
 
                 if (!string.IsNullOrEmpty(mergeFormat))
                 {
