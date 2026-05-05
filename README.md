@@ -1,38 +1,44 @@
 # M3U8 Downloader
 
-A modern Windows desktop application for downloading M3U8 video streams with an intuitive WPF interface.
+Một ứng dụng desktop hiện đại trên Windows để tải các luồng video M3U8 với giao diện WPF trực quan.
 
-## What's New in v1.2.0
+<p>
+  <a href="https://qr-donate.vercel.app/">
+    <img src="https://img.shields.io/badge/Support-Donate-EA4AAA?style=for-the-badge&logo=githubsponsors&logoColor=red" alt="Donate">
+  </a>
+</p>
 
-- 📱 **Enhanced MP4 Compatibility:** Videos are now optimized for iPhone/Android playback using `yuv420p` pixel format and H.264/AAC codecs.
-- 🏷️ **Full Metadata Preservation:** Fixed the issue where length, resolution, and bit rate were missing in Windows Explorer.
-- 🚀 **Fast Start enabled:** Videos now support instant playback (faststart) on mobile devices.
-- 🛠️ **FFmpeg Integration:** Native support for FFmpeg to ensure robust muxing and fragment repair.
-- 🔧 **Automatic Fixup:** Uses `--fixup force` to automatically repair corrupted or missing video fragments.
+## Có gì mới trong v1.2.0
 
-## Features
+- 📱 **Tăng cường tương thích MP4:** Video hiện đã được tối ưu hóa để phát trên iPhone/Android bằng cách sử dụng chuẩn màu `yuv420p` và codec H.264/AAC.
+- 🏷️ **Bảo tồn đầy đủ Metadata:** Đã sửa lỗi thiếu thông tin độ dài, độ phân giải và tốc độ bit trong Windows Explorer.
+- 🚀 **Kích hoạt Fast Start:** Video hiện hỗ trợ phát ngay lập tức (faststart) trên các thiết bị di động.
+- 🛠️ **Tích hợp FFmpeg:** Hỗ trợ FFmpeg gốc để đảm bảo đóng gói (muxing) ổn định và sửa lỗi các phân đoạn video.
+- 🔧 **Tự động sửa lỗi (Fixup):** Sử dụng `--fixup force` để tự động sửa chữa các phân đoạn video bị hỏng hoặc bị thiếu.
 
-- 🎥 Download M3U8/MP4/MP3/M4A/MKV video and audio streams
-- 🤖 **Animevietsub Support:** Automatic link extraction and anti-bot bypass.
-- 🖥️ Modern WPF UI with WPF-UI framework
-- ⚡ Built with .NET 8.0 for optimal performance
-- 📦 Self-contained executable
-- 📝 Support for custom headers and download paths
-- 📊 Real-time download progress tracking
+## Tính năng
 
-## Screenshots
-![GUI App](Resource/Image/appScreenshot.png)
+- 🎥 Tải các luồng video và âm thanh định dạng M3U8/MP4/MP3/M4A/MKV.
+- 🤖 **Hỗ trợ Animevietsub:** Tự động trích xuất liên kết và vượt qua anti-bot.
+- 🖥️ Giao diện WPF hiện đại với khung WPF-UI.
+- ⚡ Được xây dựng với .NET 8.0 để đạt hiệu suất tối ưu.
+- 📦 File thực thi độc lập (Self-contained).
+- 📝 Hỗ trợ tùy chỉnh tiêu đề (headers) và đường dẫn tải về.
+- 📊 Theo dõi tiến độ tải về trong thời gian thực.
 
-## Installation & Setup
-1. Download the latest release from the [Releases](https://github.com/Akai1Shuichi/m3u8downloader/releases) page.
-2. Extract the ZIP file.
-3. **Important:** To enable full MP4 compatibility and metadata, place `ffmpeg.exe` and `ffprobe.exe` inside the `Tools/ffmpeg/` directory.
-4. Run `m3u8Downloader.exe`.
+## Ảnh chụp màn hình
+![Giao diện ứng dụng](Resource/Image/appScreenshot.png)
 
-## Usage
-1. Launch the application.
-2. Paste your M3U8 URL or raw M3U8 content into the input field.
-3. Choose your preferred format (MP4, MKV, MP3, etc.).
-4. Click the download button.
+## Cài đặt & Thiết lập
+1. Tải bản phát hành mới nhất từ trang [Releases](https://github.com/Akai1Shuichi/m3u8downloader/releases).
+2. Giải nén tệp ZIP.
+3. **Quan trọng:** Để kích hoạt đầy đủ khả năng tương thích MP4 và metadata, hãy đặt file `ffmpeg.exe` và `ffprobe.exe` vào trong thư mục `Tools/ffmpeg/`.
+4. Chạy `m3u8Downloader.exe`.
 
-For more details, see the [Changelog](CHANGELOG.md).
+## Cách sử dụng
+1. Khởi chạy ứng dụng.
+2. Dán URL M3U8 hoặc nội dung M3U8 thô của bạn vào ô nhập liệu.
+3. Chọn định dạng ưu tiên (MP4, MKV, MP3, v.v.).
+4. Nhấn nút tải về.
+
+Để biết thêm chi tiết, xem thêm tại [Nhật ký thay đổi (Changelog)](CHANGELOG.md).
