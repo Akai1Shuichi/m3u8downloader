@@ -91,6 +91,13 @@ namespace m3u8Downloader.ViewModel
             set { _m3u8Text = value; OnPropertyChanged(); }
         }
 
+        private string _m3u8BaseUrl;
+        public string M3u8BaseUrl
+        {
+            get { return _m3u8BaseUrl; }
+            set { _m3u8BaseUrl = value; OnPropertyChanged(); }
+        }
+
 
 
         private string _videoPath;
@@ -193,6 +200,7 @@ namespace m3u8Downloader.ViewModel
                 // Áp dụng cài đặt vào properties
                 Url = _config.Url;
                 M3u8Text = _config.M3u8Text;
+                M3u8BaseUrl = _config.M3u8BaseUrl;
                 VideoPath = _config.VideoPath;
                 MaxWorker = _config.MaxWorker;
                 BatchSize = _config.BatchSize;
@@ -212,6 +220,7 @@ namespace m3u8Downloader.ViewModel
                 // Cập nhật model với các giá trị hiện tại
                 _config.Url = Url;
                 _config.M3u8Text = M3u8Text;
+                _config.M3u8BaseUrl = M3u8BaseUrl;
                 _config.VideoPath = VideoPath;
                 _config.MaxWorker = MaxWorker;
                 _config.BatchSize = BatchSize;
@@ -342,44 +351,63 @@ namespace m3u8Downloader.ViewModel
                 }
                 else
                 {
-                    // Start HTTP server
+                    // Start HTTP server for raw M3U8 text. Only use Playwright for anime domains.
                     try
                     {
-                        if (_playwrightService == null)
-                        {
-                            _playwrightService = new PlaywrightService();
-                            _playwrightService.LogMessage += OnPlaywrightLogMessage;
-                            _playwrightService.ErrorOccurred += OnPlaywrightError;
-                        }
                         var domain = CurrentDomain;
-                        _playwrightService.BatchSize = BatchSize;
-                        _playwrightService.TargetDomain = domain;
-                        bool isInstalled = await CheckPlaywrightInstallationAsync();
-                        if (!isInstalled)
-                        {
-                            Result = "❌ Playwright chưa được cài đặt đúng cách";
-                            return;
-                        }
+                        string m3u8ContentToServe = inputSource;
 
-                        bool initialized = await _playwrightService.InitializeAsync();
-                        if (!initialized)
+                        if (!string.IsNullOrEmpty(domain) && domain.Contains("anime"))
                         {
-                            Result = "❌ Không thể khởi tạo Playwright";
-                            return;
-                        }
+                            if (_playwrightService == null)
+                            {
+                                _playwrightService = new PlaywrightService();
+                                _playwrightService.LogMessage += OnPlaywrightLogMessage;
+                                _playwrightService.ErrorOccurred += OnPlaywrightError;
+                            }
 
-                        if (_playwrightService != null)
-                        {
                             _playwrightService.BatchSize = BatchSize;
+                            _playwrightService.TargetDomain = domain;
+
+                            bool isInstalled = await CheckPlaywrightInstallationAsync();
+                            if (!isInstalled)
+                            {
+                                Result = "❌ Playwright chưa được cài đặt đúng cách";
+                                return;
+                            }
+
+                            bool initialized = await _playwrightService.InitializeAsync();
+                            if (!initialized)
+                            {
+                                Result = "❌ Không thể khởi tạo Playwright";
+                                return;
+                            }
+
+                            var converted = await _playwrightService.ConvertM3U8ContentAsync(inputSource, _cancellationTokenSource.Token);
+                            if (string.IsNullOrWhiteSpace(converted))
+                            {
+                                Result = "❌ Không thể chuyển đổi nội dung M3U8";
+                                IsDownloading = false;
+                                return;
+                            }
+
+                            m3u8ContentToServe = converted;
+                            m3u8TextFromUrl = converted;
                         }
-                        var converted = await _playwrightService.ConvertM3U8ContentAsync(inputSource, _cancellationTokenSource.Token);
-                        m3u8TextFromUrl = converted;
-                        _httpServer = new LocalHttpServer(converted);
+                        else
+                        {
+                            m3u8TextFromUrl = inputSource;
+                        }
+
+                        m3u8ContentToServe = NormalizeM3U8Content(m3u8ContentToServe, M3u8BaseUrl);
+                        m3u8TextFromUrl = m3u8ContentToServe;
+
+                        _httpServer = new LocalHttpServer(m3u8ContentToServe);
                         _httpServer.Start();
-                        
+
                         // Use the HTTP server URL
                         inputArg = $"\"{_httpServer.PlaylistUrl}\"";
-                        
+
                         // Add debug info
                         Result += $"\n🌐 HTTP Server started at: {_httpServer.PlaylistUrl}";
                     }
@@ -732,6 +760,45 @@ namespace m3u8Downloader.ViewModel
             }
 
             return headersDict;
+        }
+
+        private string NormalizeM3U8Content(string content, string? baseUrl)
+        {
+            if (string.IsNullOrWhiteSpace(content) || string.IsNullOrWhiteSpace(baseUrl))
+            {
+                return content;
+            }
+
+            if (!Uri.TryCreate(baseUrl.Trim(), UriKind.Absolute, out var parsedBaseUri))
+            {
+                return content;
+            }
+
+            Uri resolvedBaseUri = parsedBaseUri;
+            string lastSegment = parsedBaseUri.Segments.LastOrDefault() ?? string.Empty;
+            if (!parsedBaseUri.AbsolutePath.EndsWith("/") && !lastSegment.Contains('.'))
+            {
+                resolvedBaseUri = new Uri($"{parsedBaseUri.AbsoluteUri}/");
+            }
+
+            var lines = content.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n');
+            for (int i = 0; i < lines.Length; i++)
+            {
+                var trimmedLine = lines[i].Trim();
+                if (string.IsNullOrEmpty(trimmedLine) || trimmedLine.StartsWith("#"))
+                {
+                    continue;
+                }
+
+                if (Uri.TryCreate(trimmedLine, UriKind.Absolute, out _))
+                {
+                    continue;
+                }
+
+                lines[i] = new Uri(resolvedBaseUri, trimmedLine).ToString();
+            }
+
+            return string.Join("\r\n", lines);
         }
 
         private async void CheckSize()

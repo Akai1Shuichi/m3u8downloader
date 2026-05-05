@@ -4,6 +4,7 @@
     {
         public string Url { get; set; } = "";
         public string M3u8Text { get; set; } = "";
+        public string M3u8BaseUrl { get; set; } = "";
         public string VideoPath { get; set; } = "";
         public double MaxWorker { get; set; } = 32;
         public int BatchSize { get; set; } = 10;

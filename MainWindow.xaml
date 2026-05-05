@@ -96,6 +96,13 @@
                         VerticalScrollBarVisibility="Auto"
                         Visibility="{Binding IsTextMode, Converter={StaticResource BoolToVisibility}}" />
 
+                    <controls:LabeledInput
+                        Margin="0,10,0,0"
+                        Label="M3U8 Base URL:"
+                        PlaceHolder="https://example.com/path/"
+                        Text="{Binding M3u8BaseUrl, Mode=TwoWay}"
+                        Visibility="{Binding IsTextMode, Converter={StaticResource BoolToVisibility}}" />
+
                 </StackPanel>
 
                 <StackPanel Orientation="Vertical">
