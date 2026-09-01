@@ -1,4 +1,4 @@
-﻿<ui:FluentWindow
+<ui:FluentWindow
     x:Class="m3u8Downloader.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -110,20 +110,32 @@
                         Margin="0,10,0,4"
                         FontWeight="Bold"
                         Foreground="White"
-                        Text="Thư mục video" />
+                        Text="Thư mục lưu &amp; Tên file" />
 
-                    <StackPanel Margin="0,0,0,10" Orientation="Horizontal">
+                    <!--  Folder path row  -->
+                    <StackPanel Margin="0,0,0,6" Orientation="Horizontal">
                         <controls:LabeledInput
                             Width="400"
+                            Label="Thư mục:"
                             PlaceHolder="Nhập đường dẫn lưu video"
                             Text="{Binding VideoPath, Mode=TwoWay}" />
                         <ui:Button
+                            Margin="8,0,0,0"
+                            VerticalAlignment="Bottom"
                             Command="{Binding BrowseFolderCommand}"
                             Content="Chọn"
                             Foreground="White"
                             Style="{StaticResource PrimaryButton}" />
-
                     </StackPanel>
+
+                    <!--  Custom file name row  -->
+                    <controls:LabeledInput
+                        Width="400"
+                        HorizontalAlignment="Left"
+                        Label="Tên file:"
+                        PlaceHolder="Để trống = tự đặt tên theo thời gian"
+                        Text="{Binding VideoName, Mode=TwoWay}" />
+
                 </StackPanel>
 
                 <Expander Margin="0,4,0,0" Header="Cài đặt nâng cao">

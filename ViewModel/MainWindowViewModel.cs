@@ -1,4 +1,4 @@
-﻿using m3u8Downloader.Model;
+using m3u8Downloader.Model;
 using m3u8Downloader.MVVM;
 using m3u8Downloader.Services;
 using System.Diagnostics;
@@ -23,6 +23,7 @@ namespace m3u8Downloader.ViewModel
         private bool _isDownloading = false;
         private string m3u8TextFromUrl = "";
         private string _extractedToken = "";
+        private string _lastSafeBaseName = "";
 
 
         private string _url;
@@ -105,6 +106,13 @@ namespace m3u8Downloader.ViewModel
         {
             get => _videoPath;
             set { _videoPath = value; OnPropertyChanged(); }
+        }
+
+        private string _videoName;
+        public string VideoName
+        {
+            get => _videoName;
+            set { _videoName = value; OnPropertyChanged(); }
         }
 
         private double _maxWorker = 1;
@@ -202,6 +210,7 @@ namespace m3u8Downloader.ViewModel
                 M3u8Text = _config.M3u8Text;
                 M3u8BaseUrl = _config.M3u8BaseUrl;
                 VideoPath = _config.VideoPath;
+                VideoName = _config.VideoName;
                 MaxWorker = _config.MaxWorker;
                 BatchSize = _config.BatchSize;
                 Headers = _config.Headers;
@@ -222,6 +231,7 @@ namespace m3u8Downloader.ViewModel
                 _config.M3u8Text = M3u8Text;
                 _config.M3u8BaseUrl = M3u8BaseUrl;
                 _config.VideoPath = VideoPath;
+                _config.VideoName = VideoName;
                 _config.MaxWorker = MaxWorker;
                 _config.BatchSize = BatchSize;
                 _config.Headers = Headers;
@@ -319,7 +329,24 @@ namespace m3u8Downloader.ViewModel
 
                 string prefix = (PreferredFormat == "mp4" || PreferredFormat == "mkv") ? "video" : "audio";
                 string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-                string outputTemplate = Path.Combine(VideoPath, $"{prefix}_{timestamp}.%(ext)s");
+
+                // Build a safe base name from user input, fallback to prefix_timestamp
+                string safeBaseName;
+                if (!string.IsNullOrWhiteSpace(VideoName))
+                {
+                    // Remove invalid path characters
+                    var invalidChars = Path.GetInvalidFileNameChars();
+                    safeBaseName = string.Concat(VideoName.Trim().Select(c => invalidChars.Contains(c) ? '_' : c));
+                    if (string.IsNullOrWhiteSpace(safeBaseName))
+                        safeBaseName = $"{prefix}_{timestamp}";
+                }
+                else
+                {
+                    safeBaseName = $"{prefix}_{timestamp}";
+                }
+
+                string outputTemplate = Path.Combine(VideoPath, $"{safeBaseName}.%(ext)s");
+                _lastSafeBaseName = safeBaseName; // Store for cleanup use
 
                 // Handle different input types
                 string inputArg;
@@ -470,12 +497,15 @@ namespace m3u8Downloader.ViewModel
                 }
 
                 // Common stability options
-                argsList.AddRange(new []{
+                argsList.AddRange(new []
+                {
                     $"--concurrent-fragments \"{MaxWorker}\"",
                     "--fragment-retries 10",
                     "--retries 10",
                     "--no-check-certificate",
-                    "--ignore-errors"
+                    "--ignore-errors",
+                    "--no-continue",        // Do not resume partially downloaded files
+                    "--force-overwrites"    // Overwrite if file already exists (prevents skipping)
                 });
 
                 // Add post-processing args (audio extraction)
@@ -534,10 +564,10 @@ namespace m3u8Downloader.ViewModel
                     return; // Đã được xử lý trong PauseDownload()
                 }
 
-                // Kiểm tra file đã được tải về chưa
-                var downloadedFiles = Directory.GetFiles(VideoPath, "video_*.*")
-                            .Where(f => !f.EndsWith(".part") && !f.Contains(".part-Frag"))
-                            .OrderByDescending(f => File.GetCreationTime(f))
+                // Kiểm tra file đã được tải về chưa (tìm theo tên file đã đặt)
+                var downloadedFiles = Directory.GetFiles(VideoPath, $"{safeBaseName}.*")
+                            .Where(f => !f.EndsWith(".part") && !f.Contains(".part-Frag") && !f.EndsWith(".ytdl"))
+                            .OrderByDescending(f => File.GetLastWriteTime(f))
                             .Take(1);
 
                 string downloadedFile = downloadedFiles.FirstOrDefault();
@@ -678,7 +708,8 @@ namespace m3u8Downloader.ViewModel
                 }
 
                 // Xóa các file video chưa hoàn thành (có thể detect bằng size hoặc tên)
-                var videoFiles = Directory.GetFiles(VideoPath, "video_*.*", SearchOption.TopDirectoryOnly)
+                string namePattern = !string.IsNullOrEmpty(_lastSafeBaseName) ? $"{_lastSafeBaseName}.*" : "video_*.*";
+                var videoFiles = Directory.GetFiles(VideoPath, namePattern, SearchOption.TopDirectoryOnly)
                                          .Where(f => !Path.GetExtension(f).Equals(".mp4", StringComparison.OrdinalIgnoreCase) ||
                                                    new FileInfo(f).Length < 1024); // File < 1KB coi như chưa hoàn thành
 

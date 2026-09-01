@@ -5,6 +5,21 @@ Tất cả các thay đổi đáng chú ý đối với dự án này sẽ đư�
 Định dạng dựa trên [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 và dự án này tuân thủ [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-09-01
+
+### Đã sửa lỗi (Fixed)
+- Sửa lỗi nghiêm trọng: nhấn **Tải** lần 2 với URL mới nhưng vẫn tải lại file video cũ (do yt-dlp resume/skip file trùng tên). Thêm cờ `--no-continue` và `--force-overwrites` để bắt buộc tải mới hoàn toàn.
+
+### Đã thêm (Added)
+- Thêm ô nhập **Tên file** ngay dưới phần thư mục lưu, cho phép người dùng đặt tên file video trước khi tải.
+- Tên file tùy chỉnh được lưu lại vào config, không cần nhập lại mỗi lần.
+- Nếu để trống ô tên file, ứng dụng tự đặt tên theo thời gian (`video_YYYYMMDD_HHmmss`).
+- Tự động loại bỏ các ký tự không hợp lệ trong tên file.
+
+### Đã thay đổi (Changed)
+- Cải thiện giao diện phần **Thư mục lưu**: thêm nhãn rõ ràng "Thư mục:" và "Tên file:".
+- Cập nhật phiên bản ứng dụng lên 1.3.0.
+
 ## [1.2.0] - 2026-05-05
 
 ### Đã sửa lỗi (Fixed)
