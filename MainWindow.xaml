@@ -356,11 +356,11 @@
                                 FontWeight="SemiBold"
                                 Foreground="DodgerBlue">
                                 <Hyperlink
-                                    NavigateUri="https://www.tiktok.com/@trtoantech"
+                                    NavigateUri="https://www.tiktok.com/@thich_it"
                                     RequestNavigate="Hyperlink_RequestNavigate"
                                     TextDecorations="{x:Null}"
-                                    ToolTip="Tiktok: @trtoantech">
-                                    Tiktok: @trtoantech
+                                    ToolTip="Tiktok: @thich_it">
+                                    Tiktok: @thich_it
                                 </Hyperlink>
                             </TextBlock>
                         </StackPanel>
