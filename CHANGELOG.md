@@ -5,6 +5,16 @@ Tất cả các thay đổi đáng chú ý đối với dự án này sẽ đư�
 Định dạng dựa trên [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 và dự án này tuân thủ [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-09-02
+
+### Đã thêm (Added)
+- **Tải hàng loạt URL (Batch Download):** Cho phép nhập danh sách nhiều link (mỗi dòng một URL) để tải toàn bộ bộ phim hoặc danh sách video tự động.
+- Hỗ trợ định dạng `URL | Tên file` trên từng dòng để đặt tên riêng cho từng tập/video.
+- Nếu đặt "Tên file" chung, phần mềm sẽ tự động đánh số thứ tự (ví dụ: `TenPhim_01`, `TenPhim_02`,...).
+- Tự động chuyển tiếp tải từng video trong danh sách, theo dõi tiến độ chi tiết `[1/N]`, báo cáo tổng kết số lượng thành công/thất bại sau khi hoàn tất.
+- Hỗ trợ nút Dừng/Pause để hủy nhanh toàn bộ hàng đợi đang tải.
+- Tự động cấp phát cổng HTTP cục bộ tránh xung đột khi tải liên tục.
+
 ## [1.3.0] - 2026-09-01
 
 ### Đã sửa lỗi (Fixed)

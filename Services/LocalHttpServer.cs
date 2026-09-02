@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Sockets;
 using System.Text;
 
 namespace m3u8Downloader.Services
@@ -14,10 +15,29 @@ namespace m3u8Downloader.Services
         public string BaseUrl => $"http://127.0.0.1:{_port}";
         public string PlaylistUrl => $"{BaseUrl}/playlist.m3u8";
 
-        public LocalHttpServer(string m3u8Content, int port = 8000)
+        public LocalHttpServer(string m3u8Content, int port = 0)
         {
             _m3u8Content = m3u8Content;
-            _port = port;
+            _port = port > 0 ? port : GetAvailablePort(8000);
+        }
+
+        private static int GetAvailablePort(int startingPort = 8000)
+        {
+            for (int port = startingPort; port < startingPort + 100; port++)
+            {
+                try
+                {
+                    var listener = new TcpListener(IPAddress.Loopback, port);
+                    listener.Start();
+                    listener.Stop();
+                    return port;
+                }
+                catch
+                {
+                    // Port in use, try next
+                }
+            }
+            return startingPort;
         }
 
         public void Start()

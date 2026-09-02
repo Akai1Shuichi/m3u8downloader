@@ -3,6 +3,7 @@ namespace m3u8Downloader.Model
     internal class Config
     {
         public string Url { get; set; } = "";
+        public string BatchUrls { get; set; } = "";
         public string M3u8Text { get; set; } = "";
         public string M3u8BaseUrl { get; set; } = "";
         public string VideoPath { get; set; } = "";

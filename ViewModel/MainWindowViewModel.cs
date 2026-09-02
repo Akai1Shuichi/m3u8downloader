@@ -11,10 +11,9 @@ namespace m3u8Downloader.ViewModel
 {
     public class MainWindowViewModel : ViewModelBase
     {
-
         private Process? _downloadProcess;
-        private CancellationTokenSource _cancellationTokenSource;
-        private Config _config;
+        private CancellationTokenSource? _cancellationTokenSource;
+        private Config _config = new();
         private readonly ConfigService _configService;
         private LocalHttpServer? _httpServer;
         private PlaywrightService? _playwrightService;
@@ -25,20 +24,25 @@ namespace m3u8Downloader.ViewModel
         private string _extractedToken = "";
         private string _lastSafeBaseName = "";
 
-
-        private string _url;
-
+        private string _url = "";
         public string Url
         {
-            get { return _url; }
+            get => _url;
             set { _url = value; OnPropertyChanged(); }
+        }
+
+        private string _batchUrls = "";
+        public string BatchUrls
+        {
+            get => _batchUrls;
+            set { _batchUrls = value; OnPropertyChanged(); }
         }
 
         // Helper method to extract domain from URL
         private string ExtractDomain(string url)
         {
             if (string.IsNullOrEmpty(url)) return "";
-            
+
             try
             {
                 var uri = new Uri(url);
@@ -57,13 +61,30 @@ namespace m3u8Downloader.ViewModel
         private bool _isUrlMode = true;
         public bool IsUrlMode
         {
-            get { return _isUrlMode; }
-            set 
-            { 
-                _isUrlMode = value; 
+            get => _isUrlMode;
+            set
+            {
+                _isUrlMode = value;
                 OnPropertyChanged();
                 if (value)
                 {
+                    IsBatchUrlMode = false;
+                    IsTextMode = false;
+                }
+            }
+        }
+
+        private bool _isBatchUrlMode = false;
+        public bool IsBatchUrlMode
+        {
+            get => _isBatchUrlMode;
+            set
+            {
+                _isBatchUrlMode = value;
+                OnPropertyChanged();
+                if (value)
+                {
+                    IsUrlMode = false;
                     IsTextMode = false;
                 }
             }
@@ -72,43 +93,41 @@ namespace m3u8Downloader.ViewModel
         private bool _isTextMode = false;
         public bool IsTextMode
         {
-            get { return _isTextMode; }
-            set 
-            { 
-                _isTextMode = value; 
+            get => _isTextMode;
+            set
+            {
+                _isTextMode = value;
                 OnPropertyChanged();
                 if (value)
                 {
                     IsUrlMode = false;
+                    IsBatchUrlMode = false;
                 }
             }
         }
 
-
-        private string _m3u8Text;
+        private string _m3u8Text = "";
         public string M3u8Text
         {
-            get { return _m3u8Text; }
+            get => _m3u8Text;
             set { _m3u8Text = value; OnPropertyChanged(); }
         }
 
-        private string _m3u8BaseUrl;
+        private string _m3u8BaseUrl = "";
         public string M3u8BaseUrl
         {
-            get { return _m3u8BaseUrl; }
+            get => _m3u8BaseUrl;
             set { _m3u8BaseUrl = value; OnPropertyChanged(); }
         }
 
-
-
-        private string _videoPath;
+        private string _videoPath = "";
         public string VideoPath
         {
             get => _videoPath;
             set { _videoPath = value; OnPropertyChanged(); }
         }
 
-        private string _videoName;
+        private string _videoName = "";
         public string VideoName
         {
             get => _videoName;
@@ -136,48 +155,40 @@ namespace m3u8Downloader.ViewModel
             set { _isAnimevietsub = value; OnPropertyChanged(); }
         }
 
-        private string _result;
+        private string _result = "";
         public string Result
         {
             get => _result;
             set { _result = value; OnPropertyChanged(); }
         }
 
-        private string _headers;
-
+        private string _headers = "";
         public string Headers
         {
-            get { return _headers; }
+            get => _headers;
             set { _headers = value; OnPropertyChanged(); }
         }
 
         private string _preferredFormat = "mp4";
         public string PreferredFormat
         {
-            get { return _preferredFormat; }
+            get => _preferredFormat;
             set { _preferredFormat = value; OnPropertyChanged(); }
         }
 
-
         public bool IsDownloading
         {
-            get { return _isDownloading; }
+            get => _isDownloading;
             set { _isDownloading = value; OnPropertyChanged(); }
         }
 
         // Commands
         public ICommand DownloadCommand { get; }
-
         public ICommand PauseCommand { get; }
-
         public ICommand CheckSizeCommand { get; }
-
         public ICommand BrowseFolderCommand { get; }
-
         public ICommand OpenDonateCommand { get; }
-
         public ICommand FetchAnimevietsubApiCommand { get; }
-
 
         public MainWindowViewModel()
         {
@@ -190,6 +201,7 @@ namespace m3u8Downloader.ViewModel
             BrowseFolderCommand = new RelayCommand(_ => BrowseFolder());
             PauseCommand = new RelayCommand(async _ => await PauseDownloadAsync());
             OpenDonateCommand = new RelayCommand(_ => OpenDonate());
+            FetchAnimevietsubApiCommand = new RelayCommand(async _ => await FetchAnimevietsubApi());
 
             // Đăng ký event handlers cho PlaywrightService
             if (_playwrightService != null)
@@ -207,6 +219,7 @@ namespace m3u8Downloader.ViewModel
 
                 // Áp dụng cài đặt vào properties
                 Url = _config.Url;
+                BatchUrls = _config.BatchUrls;
                 M3u8Text = _config.M3u8Text;
                 M3u8BaseUrl = _config.M3u8BaseUrl;
                 VideoPath = _config.VideoPath;
@@ -228,6 +241,7 @@ namespace m3u8Downloader.ViewModel
             {
                 // Cập nhật model với các giá trị hiện tại
                 _config.Url = Url;
+                _config.BatchUrls = BatchUrls;
                 _config.M3u8Text = M3u8Text;
                 _config.M3u8BaseUrl = M3u8BaseUrl;
                 _config.VideoPath = VideoPath;
@@ -246,39 +260,7 @@ namespace m3u8Downloader.ViewModel
         }
 
         private async Task Download()
-        {            
-            // Validate input based on selected mode
-            string inputSource = "";
-            if (IsUrlMode)
-            {
-                if (string.IsNullOrWhiteSpace(Url))
-                {
-                    var messageBox = new WpfUiMessageBox
-                    {
-                        Title = "Thông báo",
-                        Content = "❌ Vui lòng nhập URL!"
-                    };
-                    await messageBox.ShowDialogAsync();
-                    return;
-                }
-                inputSource = Url;
-            }
-            else if (IsTextMode)
-            {
-                if (string.IsNullOrWhiteSpace(M3u8Text))
-                {
-                    var messageBox = new WpfUiMessageBox
-                    {
-                        Title = "Thông báo",
-                        Content = "❌ Vui lòng nhập nội dung M3U8!"
-                    };
-                    await messageBox.ShowDialogAsync();
-                    return;
-                }
-                inputSource = M3u8Text;
-            }
-         
-
+        {
             if (string.IsNullOrWhiteSpace(VideoPath))
             {
                 var messageBox = new WpfUiMessageBox
@@ -292,8 +274,6 @@ namespace m3u8Downloader.ViewModel
 
             // Set trạng thái đang tải
             IsDownloading = true;
-            
-            // Reset trạng thái
             _isPaused = false;
             _cancellationTokenSource?.Dispose();
             _cancellationTokenSource = new CancellationTokenSource();
@@ -301,13 +281,144 @@ namespace m3u8Downloader.ViewModel
             // Lưu cài đặt trước khi tải
             await SaveSettingsAsync();
 
-            string inputType = IsUrlMode ? "URL" : "M3U8 Text";
-            Result = $"Bắt đầu tải video từ: {inputType}\nThư mục: {VideoPath}\nSố luồng: {MaxWorker}";
-            
-            if (!IsUrlMode)
+            try
             {
-                Result += $"\n📝 M3U8 content length: {inputSource.Length} characters";
+                if (IsUrlMode)
+                {
+                    if (string.IsNullOrWhiteSpace(Url))
+                    {
+                        var messageBox = new WpfUiMessageBox
+                        {
+                            Title = "Thông báo",
+                            Content = "❌ Vui lòng nhập URL!"
+                        };
+                        await messageBox.ShowDialogAsync();
+                        IsDownloading = false;
+                        return;
+                    }
+
+                    Result = $"Bắt đầu tải video từ URL: {Url}\nThư mục: {VideoPath}\nSố luồng: {MaxWorker}";
+                    await DownloadCoreAsync(Url, VideoName, 1, 1, isRawM3u8: false, _cancellationTokenSource.Token);
+                }
+                else if (IsTextMode)
+                {
+                    if (string.IsNullOrWhiteSpace(M3u8Text))
+                    {
+                        var messageBox = new WpfUiMessageBox
+                        {
+                            Title = "Thông báo",
+                            Content = "❌ Vui lòng nhập nội dung M3U8!"
+                        };
+                        await messageBox.ShowDialogAsync();
+                        IsDownloading = false;
+                        return;
+                    }
+
+                    Result = $"Bắt đầu tải video từ M3U8 text\nThư mục: {VideoPath}\nSố luồng: {MaxWorker}\n📝 Độ dài nội dung: {M3u8Text.Length} ký tự";
+                    await DownloadCoreAsync(M3u8Text, VideoName, 1, 1, isRawM3u8: true, _cancellationTokenSource.Token);
+                }
+                else if (IsBatchUrlMode)
+                {
+                    var lines = (BatchUrls ?? "").Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+                    var batchUrls = new List<string>();
+
+                    foreach (var line in lines)
+                    {
+                        var trimmed = line.Trim();
+                        if (string.IsNullOrWhiteSpace(trimmed) || trimmed.StartsWith("#"))
+                            continue;
+
+                        if (trimmed.Contains("|"))
+                        {
+                            var parts = trimmed.Split(new[] { '|' }, 2);
+                            var itemUrl = parts[0].Trim();
+                            if (!string.IsNullOrEmpty(itemUrl))
+                            {
+                                batchUrls.Add(itemUrl);
+                            }
+                        }
+                        else
+                        {
+                            batchUrls.Add(trimmed);
+                        }
+                    }
+
+                    if (batchUrls.Count == 0)
+                    {
+                        var messageBox = new WpfUiMessageBox
+                        {
+                            Title = "Thông báo",
+                            Content = "❌ Vui lòng nhập ít nhất một URL hợp lệ!"
+                        };
+                        await messageBox.ShowDialogAsync();
+                        IsDownloading = false;
+                        return;
+                    }
+
+                    Result = $"🚀 Bắt đầu tải hàng loạt ({batchUrls.Count} video)\nThư mục: {VideoPath}\nSố luồng: {MaxWorker}";
+
+                    int successCount = 0;
+                    int failCount = 0;
+
+                    for (int i = 0; i < batchUrls.Count; i++)
+                    {
+                        if (_isPaused || _cancellationTokenSource.Token.IsCancellationRequested)
+                            break;
+
+                        var itemUrl = batchUrls[i];
+                        int currentIdx = i + 1;
+                        int totalCount = batchUrls.Count;
+
+                        Result = $"⏳ [{currentIdx}/{totalCount}] Đang bắt đầu tải: {itemUrl}";
+
+                        bool ok = await DownloadCoreAsync(itemUrl, null, currentIdx, totalCount, isRawM3u8: false, _cancellationTokenSource.Token);
+
+                        if (ok)
+                        {
+                            successCount++;
+                        }
+                        else
+                        {
+                            if (_isPaused || _cancellationTokenSource.Token.IsCancellationRequested)
+                                break;
+                            failCount++;
+                        }
+
+                        if (i < batchUrls.Count - 1 && !_isPaused && !_cancellationTokenSource.Token.IsCancellationRequested)
+                        {
+                            await Task.Delay(500, _cancellationTokenSource.Token);
+                        }
+                    }
+
+                    if (_isPaused || _cancellationTokenSource.Token.IsCancellationRequested)
+                    {
+                        Result = $"⏸️ Đã dừng quá trình tải hàng loạt. (Đã hoàn thành: {successCount}/{batchUrls.Count})";
+                    }
+                    else
+                    {
+                        Result = $"🎉 Tải hàng loạt hoàn tất! Thành công: {successCount}/{batchUrls.Count}" + (failCount > 0 ? $", Thất bại: {failCount}" : "");
+                    }
+                }
             }
+            catch (OperationCanceledException)
+            {
+                // Xử lý khi bị hủy
+            }
+            catch (Exception ex)
+            {
+                if (!_isPaused)
+                {
+                    Result = $"❌ Lỗi: {ex.Message}";
+                }
+            }
+            finally
+            {
+                IsDownloading = false;
+            }
+        }
+
+        private async Task<bool> DownloadCoreAsync(string inputSource, string? customName, int itemIndex, int totalItems, bool isRawM3u8, CancellationToken cancellationToken)
+        {
             try
             {
                 string ytDlpPath = Path.Combine(AppContext.BaseDirectory, "Tools", "yt-dlp", "yt-dlp.exe");
@@ -316,8 +427,7 @@ namespace m3u8Downloader.ViewModel
                 if (!File.Exists(ytDlpPath))
                 {
                     Result = "❌ Không tìm thấy file yt-dlp.exe!";
-                    IsDownloading = false;
-                    return;
+                    return false;
                 }
 
                 var headersDict = ParseHeaders(Headers);
@@ -330,55 +440,35 @@ namespace m3u8Downloader.ViewModel
                 string prefix = (PreferredFormat == "mp4" || PreferredFormat == "mkv") ? "video" : "audio";
                 string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
 
-                // Build a safe base name from user input, fallback to prefix_timestamp
+                // Build a safe base name from user input / custom item name
                 string safeBaseName;
-                if (!string.IsNullOrWhiteSpace(VideoName))
+                var invalidChars = Path.GetInvalidFileNameChars();
+
+                if (!string.IsNullOrWhiteSpace(customName))
                 {
-                    // Remove invalid path characters
-                    var invalidChars = Path.GetInvalidFileNameChars();
-                    safeBaseName = string.Concat(VideoName.Trim().Select(c => invalidChars.Contains(c) ? '_' : c));
+                    safeBaseName = string.Concat(customName.Trim().Select(c => invalidChars.Contains(c) ? '_' : c));
                     if (string.IsNullOrWhiteSpace(safeBaseName))
-                        safeBaseName = $"{prefix}_{timestamp}";
+                        safeBaseName = totalItems > 1 ? $"{prefix}_{timestamp}_{itemIndex:D2}" : $"{prefix}_{timestamp}";
+                }
+                else if (!string.IsNullOrWhiteSpace(VideoName))
+                {
+                    string baseName = totalItems > 1 ? $"{VideoName.Trim()}_{itemIndex:D2}" : VideoName.Trim();
+                    safeBaseName = string.Concat(baseName.Select(c => invalidChars.Contains(c) ? '_' : c));
+                    if (string.IsNullOrWhiteSpace(safeBaseName))
+                        safeBaseName = totalItems > 1 ? $"{prefix}_{timestamp}_{itemIndex:D2}" : $"{prefix}_{timestamp}";
                 }
                 else
                 {
-                    safeBaseName = $"{prefix}_{timestamp}";
+                    safeBaseName = totalItems > 1 ? $"{prefix}_{timestamp}_{itemIndex:D2}" : $"{prefix}_{timestamp}";
                 }
 
                 string outputTemplate = Path.Combine(VideoPath, $"{safeBaseName}.%(ext)s");
-                _lastSafeBaseName = safeBaseName; // Store for cleanup use
+                _lastSafeBaseName = safeBaseName;
 
-                // Handle different input types
                 string inputArg;
-                if (IsUrlMode)
-                {
-                    inputArg = $"\"{inputSource}\"";
-                    var domain = CurrentDomain;
-                    if (!string.IsNullOrEmpty(domain) && domain.Contains("anime")) {
-                        // Start HTTP server
-                        try
-                        {
-                            await FetchAnimevietsubApi();
-                            _httpServer = new LocalHttpServer(m3u8TextFromUrl);
-                            _httpServer.Start();
 
-                            // Use the HTTP server URL
-                            inputArg = $"\"{_httpServer.PlaylistUrl}\"";
-
-                            // Add debug info
-                            Result += $"\n🌐 HTTP Server started at: {_httpServer.PlaylistUrl}";
-                        }
-                        catch (Exception ex)
-                        {
-                            Result = $"❌ Lỗi khởi động HTTP server: {ex.Message}";
-                            IsDownloading = false;
-                            return;
-                        }
-                    }
-                }
-                else
+                if (isRawM3u8)
                 {
-                    // Start HTTP server for raw M3U8 text. Only use Playwright for anime domains.
                     try
                     {
                         var domain = CurrentDomain;
@@ -400,22 +490,21 @@ namespace m3u8Downloader.ViewModel
                             if (!isInstalled)
                             {
                                 Result = "❌ Playwright chưa được cài đặt đúng cách";
-                                return;
+                                return false;
                             }
 
                             bool initialized = await _playwrightService.InitializeAsync();
                             if (!initialized)
                             {
                                 Result = "❌ Không thể khởi tạo Playwright";
-                                return;
+                                return false;
                             }
 
-                            var converted = await _playwrightService.ConvertM3U8ContentAsync(inputSource, _cancellationTokenSource.Token);
+                            var converted = await _playwrightService.ConvertM3U8ContentAsync(inputSource, cancellationToken);
                             if (string.IsNullOrWhiteSpace(converted))
                             {
                                 Result = "❌ Không thể chuyển đổi nội dung M3U8";
-                                IsDownloading = false;
-                                return;
+                                return false;
                             }
 
                             m3u8ContentToServe = converted;
@@ -432,17 +521,44 @@ namespace m3u8Downloader.ViewModel
                         _httpServer = new LocalHttpServer(m3u8ContentToServe);
                         _httpServer.Start();
 
-                        // Use the HTTP server URL
                         inputArg = $"\"{_httpServer.PlaylistUrl}\"";
-
-                        // Add debug info
                         Result += $"\n🌐 HTTP Server started at: {_httpServer.PlaylistUrl}";
                     }
                     catch (Exception ex)
                     {
                         Result = $"❌ Lỗi khởi động HTTP server: {ex.Message}";
-                        IsDownloading = false;
-                        return;
+                        return false;
+                    }
+                }
+                else
+                {
+                    inputArg = $"\"{inputSource}\"";
+                    var domain = ExtractDomain(inputSource);
+
+                    if (!string.IsNullOrEmpty(domain) && domain.Contains("anime"))
+                    {
+                        try
+                        {
+                            var convertedM3u8 = await FetchAnimevietsubApiForUrl(inputSource, cancellationToken);
+                            if (!string.IsNullOrEmpty(convertedM3u8))
+                            {
+                                m3u8TextFromUrl = convertedM3u8;
+                                _httpServer = new LocalHttpServer(convertedM3u8);
+                                _httpServer.Start();
+
+                                inputArg = $"\"{_httpServer.PlaylistUrl}\"";
+                                Result += $"\n🌐 HTTP Server started at: {_httpServer.PlaylistUrl}";
+                            }
+                            else
+                            {
+                                Result = $"⚠️ Không lấy được M3U8 từ API cho {inputSource}, sẽ thử tải trực tiếp";
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Result = $"❌ Lỗi khởi động HTTP server cho anime: {ex.Message}";
+                            return false;
+                        }
                     }
                 }
 
@@ -454,33 +570,30 @@ namespace m3u8Downloader.ViewModel
                 switch ((PreferredFormat ?? "mp4").ToLowerInvariant())
                 {
                     case "mp3":
-                        // Extract audio as mp3
                         formatSelector = "bestaudio/best";
                         postArgs.Add("--extract-audio");
                         postArgs.Add("--audio-format mp3");
                         postArgs.Add("--audio-quality 0");
                         break;
                     case "m4a":
-                        // Extract audio as m4a (aac)
                         formatSelector = "bestaudio/best";
                         postArgs.Add("--extract-audio");
                         postArgs.Add("--audio-format m4a");
                         postArgs.Add("--audio-quality 0");
                         break;
                     case "mkv":
-                        // Prefer MP4 streams if possible, else best, then merge to MKV
                         formatSelector = "bestvideo+bestaudio/best";
                         mergeFormat = "mkv";
                         break;
                     case "mp4":
                     default:
-                        // Prefer mp4 output
                         formatSelector = "best[ext=mp4]/best";
                         mergeFormat = "mp4";
                         break;
                 }
 
-                var argsList = new List<string> {
+                var argsList = new List<string>
+                {
                     inputArg,
                     $"-o \"{outputTemplate}\"",
                     $"--format \"{formatSelector}\"",
@@ -497,20 +610,18 @@ namespace m3u8Downloader.ViewModel
                 }
 
                 // Common stability options
-                argsList.AddRange(new []
+                argsList.AddRange(new[]
                 {
                     $"--concurrent-fragments \"{MaxWorker}\"",
                     "--fragment-retries 10",
                     "--retries 10",
                     "--no-check-certificate",
                     "--ignore-errors",
-                    "--no-continue",        // Do not resume partially downloaded files
-                    "--force-overwrites"    // Overwrite if file already exists (prevents skipping)
+                    "--no-continue",
+                    "--force-overwrites"
                 });
 
-                // Add post-processing args (audio extraction)
                 argsList.AddRange(postArgs);
-
                 argsList.AddRange(headerArgs);
                 string args = string.Join(" ", argsList);
 
@@ -532,7 +643,7 @@ namespace m3u8Downloader.ViewModel
                 {
                     if (!string.IsNullOrEmpty(e.Data))
                     {
-                        UpdateProgressFromOutput(e.Data);
+                        UpdateProgressFromOutput(e.Data, itemIndex, totalItems);
                     }
                 };
 
@@ -540,7 +651,7 @@ namespace m3u8Downloader.ViewModel
                 {
                     if (!string.IsNullOrEmpty(e.Data))
                     {
-                        UpdateProgressFromOutput(e.Data);
+                        UpdateProgressFromOutput(e.Data, itemIndex, totalItems);
                     }
                 };
 
@@ -548,64 +659,63 @@ namespace m3u8Downloader.ViewModel
                 _downloadProcess.BeginOutputReadLine();
                 _downloadProcess.BeginErrorReadLine();
 
-                // Sử dụng Task.Run với CancellationToken thay vì WaitForExitAsync
                 await Task.Run(async () =>
                 {
-                    while (!_downloadProcess.HasExited && !_cancellationTokenSource.Token.IsCancellationRequested)
+                    while (!_downloadProcess.HasExited && !cancellationToken.IsCancellationRequested)
                     {
-                        await Task.Delay(100, _cancellationTokenSource.Token);
+                        await Task.Delay(100, cancellationToken);
                     }
-                }, _cancellationTokenSource.Token);
+                }, cancellationToken);
 
-                // Kiểm tra nếu bị pause thì không hiển thị hoàn thành
-                if (_isPaused || _cancellationTokenSource.Token.IsCancellationRequested)
+                if (_isPaused || cancellationToken.IsCancellationRequested)
                 {
-                    IsDownloading = false;
-                    return; // Đã được xử lý trong PauseDownload()
+                    return false;
                 }
 
-                // Kiểm tra file đã được tải về chưa (tìm theo tên file đã đặt)
                 var downloadedFiles = Directory.GetFiles(VideoPath, $"{safeBaseName}.*")
-                            .Where(f => !f.EndsWith(".part") && !f.Contains(".part-Frag") && !f.EndsWith(".ytdl"))
-                            .OrderByDescending(f => File.GetLastWriteTime(f))
-                            .Take(1);
+                    .Where(f => !f.EndsWith(".part") && !f.Contains(".part-Frag") && !f.EndsWith(".ytdl"))
+                    .OrderByDescending(f => File.GetLastWriteTime(f))
+                    .Take(1);
 
-                string downloadedFile = downloadedFiles.FirstOrDefault();
+                string? downloadedFile = downloadedFiles.FirstOrDefault();
 
-                // Nếu có file được tải về thì coi như thành công
                 if (downloadedFile != null)
                 {
                     var fileInfo = new FileInfo(downloadedFile);
-                    Result = $"✅ Hoàn thành! File: {Path.GetFileName(downloadedFile)} ({(fileInfo.Length / 1024 / 1024):F1}MB)";
+                    string itemPrefix = totalItems > 1 ? $"[{itemIndex}/{totalItems}] " : "";
+                    Result = $"{itemPrefix}✅ Hoàn thành! File: {Path.GetFileName(downloadedFile)} ({(fileInfo.Length / 1024 / 1024):F1}MB)";
+                    return true;
                 }
                 else if (_downloadProcess.HasExited && _downloadProcess.ExitCode == 0)
                 {
-                    Result = "✅ Video đã tải xong!";
+                    string itemPrefix = totalItems > 1 ? $"[{itemIndex}/{totalItems}] " : "";
+                    Result = $"{itemPrefix}✅ Đã tải xong!";
+                    return true;
                 }
                 else if (!_isPaused)
                 {
-                    Result = "❌ Tải video thất bại!";
+                    string itemPrefix = totalItems > 1 ? $"[{itemIndex}/{totalItems}] " : "";
+                    Result = $"{itemPrefix}❌ Tải thất bại!";
+                    return false;
                 }
-                
-                // Kết thúc tải
-                IsDownloading = false;
+
+                return false;
             }
             catch (OperationCanceledException)
             {
-                // Không làm gì, đã được xử lý trong PauseDownload
-                IsDownloading = false;
+                return false;
             }
             catch (Exception ex)
             {
                 if (!_isPaused)
                 {
-                    Result = $"❌ Lỗi: {ex.Message}";
+                    string itemPrefix = totalItems > 1 ? $"[{itemIndex}/{totalItems}] " : "";
+                    Result = $"{itemPrefix}❌ Lỗi: {ex.Message}";
                 }
-                IsDownloading = false;
+                return false;
             }
             finally
             {
-                // Cleanup HTTP server if created
                 if (_httpServer != null)
                 {
                     try
@@ -616,7 +726,6 @@ namespace m3u8Downloader.ViewModel
                     }
                     catch
                     {
-                        // Ignore cleanup errors
                     }
                 }
             }
@@ -629,18 +738,15 @@ namespace m3u8Downloader.ViewModel
                 _isPaused = true;
                 IsDownloading = false;
 
-                // Cancel token trước
                 _cancellationTokenSource?.Cancel();
 
                 if (_downloadProcess != null && !_downloadProcess.HasExited)
                 {
-                    // Kill process
                     _downloadProcess.Kill(true);
                     _downloadProcess.Dispose();
                     _downloadProcess = null;
                 }
 
-                // Stop HTTP server if running
                 if (_httpServer != null)
                 {
                     _httpServer.Stop();
@@ -648,7 +754,6 @@ namespace m3u8Downloader.ViewModel
                     _httpServer = null;
                 }
 
-                // Dispose Playwright if initialized (await async close to avoid UI freeze)
                 if (_playwrightService != null)
                 {
                     try
@@ -659,7 +764,6 @@ namespace m3u8Downloader.ViewModel
                     _playwrightService = null;
                 }
 
-                // Xóa tất cả các file tạm (.part, .part-Frag, .ytdl)
                 if (!string.IsNullOrWhiteSpace(VideoPath))
                 {
                     CleanupTempFiles();
@@ -669,7 +773,7 @@ namespace m3u8Downloader.ViewModel
             }
             catch (Exception ex)
             {
-                Result = $"❌ Lỗi khi pause: {ex.Message}";
+                Result = $"❌ Lỗi khi dừng: {ex.Message}";
             }
         }
 
@@ -681,7 +785,6 @@ namespace m3u8Downloader.ViewModel
             }
             catch
             {
-                // Ignore open url errors
             }
         }
 
@@ -702,16 +805,14 @@ namespace m3u8Downloader.ViewModel
                         }
                         catch
                         {
-                            // Ignore nếu file đang được sử dụng
                         }
                     }
                 }
 
-                // Xóa các file video chưa hoàn thành (có thể detect bằng size hoặc tên)
                 string namePattern = !string.IsNullOrEmpty(_lastSafeBaseName) ? $"{_lastSafeBaseName}.*" : "video_*.*";
                 var videoFiles = Directory.GetFiles(VideoPath, namePattern, SearchOption.TopDirectoryOnly)
-                                         .Where(f => !Path.GetExtension(f).Equals(".mp4", StringComparison.OrdinalIgnoreCase) ||
-                                                   new FileInfo(f).Length < 1024); // File < 1KB coi như chưa hoàn thành
+                    .Where(f => !Path.GetExtension(f).Equals(".mp4", StringComparison.OrdinalIgnoreCase) ||
+                                new FileInfo(f).Length < 1024);
 
                 foreach (var file in videoFiles)
                 {
@@ -721,17 +822,15 @@ namespace m3u8Downloader.ViewModel
                     }
                     catch
                     {
-                        // Ignore
                     }
                 }
             }
             catch
             {
-                // Ignore cleanup errors
             }
         }
 
-        private void UpdateProgressFromOutput(string output)
+        private void UpdateProgressFromOutput(string output, int itemIndex = 1, int totalItems = 1)
         {
             try
             {
@@ -740,12 +839,17 @@ namespace m3u8Downloader.ViewModel
                     return;
                 }
 
-                Result = output;
-
+                if (totalItems > 1)
+                {
+                    Result = $"[{itemIndex}/{totalItems}] {output}";
+                }
+                else
+                {
+                    Result = output;
+                }
             }
             catch (Exception ex)
             {
-                // Bỏ qua lỗi parse để không làm gián đoạn quá trình
                 Console.WriteLine($"Parse error: {ex.Message}");
             }
         }
@@ -756,22 +860,21 @@ namespace m3u8Downloader.ViewModel
 
             if (string.IsNullOrEmpty(headersText))
             {
-                // Default headers nếu không có
-                return new Dictionary<string, string> {
-            { "accept", "*/*" },
-            { "accept-language", "en-US,en;q=0.9,vi;q=0.8" },
-            { "cache-control", "no-cache" },
-            { "pragma", "no-cache" },
-            { "sec-ch-ua", "\"Not(A:Brand\";v=\"99\", \"Google Chrome\";v=\"133\", \"Chromium\";v=\"133\"" },
-            { "sec-ch-ua-mobile", "?0" },
-            { "sec-fetch-dest", "empty" },
-            { "sec-fetch-mode", "cors" },
-            { "sec-fetch-site", "cross-site" },
-            { "user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36" }
-        };
+                return new Dictionary<string, string>
+                {
+                    { "accept", "*/*" },
+                    { "accept-language", "en-US,en;q=0.9,vi;q=0.8" },
+                    { "cache-control", "no-cache" },
+                    { "pragma", "no-cache" },
+                    { "sec-ch-ua", "\"Not(A:Brand\";v=\"99\", \"Google Chrome\";v=\"133\", \"Chromium\";v=\"133\"" },
+                    { "sec-ch-ua-mobile", "?0" },
+                    { "sec-fetch-dest", "empty" },
+                    { "sec-fetch-mode", "cors" },
+                    { "sec-fetch-site", "cross-site" },
+                    { "user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36" }
+                };
             }
 
-            // Split theo \r\n hoặc \n
             var lines = headersText.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
 
             foreach (var line in lines)
@@ -783,7 +886,6 @@ namespace m3u8Downloader.ViewModel
                     var parts = trimmedLine.Split(new[] { ':' }, 2);
                     if (parts.Length == 2)
                     {
-                        // Bỏ khoảng trắng, không cần bỏ quotes vì format mới không có
                         var key = parts[0].Trim();
                         var value = parts[1].Trim();
 
@@ -839,12 +941,49 @@ namespace m3u8Downloader.ViewModel
 
         private async void CheckSize()
         {
-            // Only allow size check for URL mode
-            if (!IsUrlMode || string.IsNullOrEmpty(Url)) {
+            string targetUrl = "";
+
+            if (IsUrlMode)
+            {
+                if (string.IsNullOrWhiteSpace(Url))
+                {
+                    var messageBox = new WpfUiMessageBox
+                    {
+                        Title = "Thông báo",
+                        Content = "❌ Vui lòng nhập URL!"
+                    };
+                    await messageBox.ShowDialogAsync();
+                    return;
+                }
+                targetUrl = Url;
+            }
+            else if (IsBatchUrlMode)
+            {
+                var lines = (BatchUrls ?? "").Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+                var validUrls = lines.Select(l => l.Contains('|') ? l.Split('|')[0].Trim() : l.Trim())
+                                     .Where(l => !string.IsNullOrEmpty(l) && !l.StartsWith("#"))
+                                     .ToList();
+
+                if (validUrls.Count == 0)
+                {
+                    var messageBox = new WpfUiMessageBox
+                    {
+                        Title = "Thông báo",
+                        Content = "❌ Vui lòng nhập ít nhất một URL hợp lệ trong danh sách!"
+                    };
+                    await messageBox.ShowDialogAsync();
+                    return;
+                }
+
+                targetUrl = validUrls.First();
+                Result = $"🔍 Danh sách gồm {validUrls.Count} URL. Đang kiểm tra link đầu tiên...";
+            }
+            else
+            {
                 var messageBox = new WpfUiMessageBox
                 {
                     Title = "Thông báo",
-                    Content = "❌ Chức năng kiểm tra kích thước chỉ khả dụng cho chế độ URL!"
+                    Content = "❌ Chức năng kiểm tra kích thước chỉ khả dụng cho chế độ URL hoặc Danh sách URL!"
                 };
                 await messageBox.ShowDialogAsync();
                 return;
@@ -852,7 +991,7 @@ namespace m3u8Downloader.ViewModel
 
             await SaveSettingsAsync();
 
-            Result = $"🔍 Đang kiểm tra kích thước của: {Url}";
+            Result = $"🔍 Đang kiểm tra kích thước của: {targetUrl}";
 
             try
             {
@@ -861,8 +1000,6 @@ namespace m3u8Downloader.ViewModel
                     httpClient.Timeout = TimeSpan.FromSeconds(60);
 
                     var headersDict = ParseHeaders(Headers);
-
-                    // Add headers
                     foreach (var header in headersDict)
                     {
                         try
@@ -872,15 +1009,13 @@ namespace m3u8Downloader.ViewModel
                         catch { }
                     }
 
-                    if (Url.EndsWith(".m3u8", StringComparison.OrdinalIgnoreCase))
+                    if (targetUrl.EndsWith(".m3u8", StringComparison.OrdinalIgnoreCase))
                     {
-                        // Đây là HLS playlist
-                        await CheckM3U8Size(httpClient, Url);
+                        await CheckM3U8Size(httpClient, targetUrl);
                     }
                     else
                     {
-                        // File thông thường
-                        await CheckNormalFileSize(httpClient, Url);
+                        await CheckNormalFileSize(httpClient, targetUrl);
                     }
                 }
             }
@@ -923,7 +1058,6 @@ namespace m3u8Downloader.ViewModel
 
             Result = $"📊 Tìm thấy {segmentUrls.Count} segments. Đang kiểm tra...";
 
-            // Tối ưu: chỉ check 1 segment nếu chỉ có 1, hoặc tối đa 3 segment
             int maxCheck = segmentUrls.Count == 1 ? 1 : Math.Min(3, segmentUrls.Count);
             long totalSize = 0;
             int checkedCount = 0;
@@ -961,7 +1095,6 @@ namespace m3u8Downloader.ViewModel
                     string prefix = "Ước tính kích thước";
                     Result = $"📊 {prefix}: {sizeText} ({segmentUrls.Count} segments)";
                 }
-                    
             }
             else if (segmentUrls.Count > 0)
             {
@@ -972,7 +1105,6 @@ namespace m3u8Downloader.ViewModel
                 Result = $"⚠️ Không thể xác định kích thước ({segmentUrls.Count} segments)";
             }
         }
-
 
         private async Task CheckNormalFileSize(HttpClient httpClient, string url)
         {
@@ -1020,7 +1152,6 @@ namespace m3u8Downloader.ViewModel
         {
             try
             {
-                // Sử dụng regex để tìm phần -a<digits> trong URL
                 var match = System.Text.RegularExpressions.Regex.Match(url, @"-a(\d+)");
                 if (match.Success && int.TryParse(match.Groups[1].Value, out var id))
                 {
@@ -1034,20 +1165,12 @@ namespace m3u8Downloader.ViewModel
             }
         }
 
-
-        private async Task FetchAnimevietsubApi()
+        private async Task<string?> FetchAnimevietsubApiForUrl(string targetUrl, CancellationToken cancellationToken)
         {
-            if (string.IsNullOrWhiteSpace(Url))
-            {
-                Result = "❌ Vui lòng nhập URL";
-                return;
-            }
-
-            var domain = CurrentDomain;
+            var domain = ExtractDomain(targetUrl);
             if (string.IsNullOrEmpty(domain) || !domain.Contains("anime"))
             {
-                Result = $"❌ URL phải thuộc domain anime (hiện tại: {domain})";
-                return;
+                return null;
             }
 
             try
@@ -1058,6 +1181,7 @@ namespace m3u8Downloader.ViewModel
                     _playwrightService.LogMessage += OnPlaywrightLogMessage;
                     _playwrightService.ErrorOccurred += OnPlaywrightError;
                 }
+
                 _playwrightService.BatchSize = BatchSize;
                 _playwrightService.TargetDomain = domain;
 
@@ -1065,41 +1189,39 @@ namespace m3u8Downloader.ViewModel
                 if (!isInstalled)
                 {
                     Result = "❌ Playwright chưa được cài đặt đúng cách";
-                    return;
+                    return null;
                 }
 
                 bool initialized = await _playwrightService.InitializeAsync();
                 if (!initialized)
                 {
                     Result = "❌ Không thể khởi tạo Playwright";
-                    return;
+                    return null;
                 }
 
-                var id = ExtractAnimevietsubIdFromUrl(Url);
+                var id = ExtractAnimevietsubIdFromUrl(targetUrl);
                 if (id == null)
                 {
                     Result = "❌ Không thể parse ID từ URL";
-                    return;
+                    return null;
                 }
 
-                // Ensure token exists (try to extract if empty)
-                if (string.IsNullOrEmpty(_extractedToken))
+                string token = "";
+                var html = await _playwrightService.DownloadHtmlFromUrlAsync(targetUrl);
+                if (!string.IsNullOrEmpty(html))
                 {
-                    var html = await _playwrightService.DownloadHtmlFromUrlAsync(Url);
-                    if (!string.IsNullOrEmpty(html))
-                    {
-                        var token = ExtractTokenFromHtml(html);
-                        if (!string.IsNullOrEmpty(token))
-                        {
-                            _extractedToken = token;
-                        }
-                    }
+                    token = ExtractTokenFromHtml(html) ?? "";
                 }
 
-                if (string.IsNullOrEmpty(_extractedToken))
+                if (string.IsNullOrEmpty(token))
+                {
+                    token = _extractedToken;
+                }
+
+                if (string.IsNullOrEmpty(token))
                 {
                     Result = "❌ Không có token để gọi API";
-                    return;
+                    return null;
                 }
 
                 string apiUrl = $"https://{domain}/ajax/player";
@@ -1108,15 +1230,13 @@ namespace m3u8Downloader.ViewModel
                 {
                     httpClient.Timeout = TimeSpan.FromSeconds(30);
 
-                    // Build headers similar to the curl
                     httpClient.DefaultRequestHeaders.Accept.Clear();
                     httpClient.DefaultRequestHeaders.Accept.ParseAdd("application/json, text/javascript, */*; q=0.01");
                     httpClient.DefaultRequestHeaders.TryAddWithoutValidation("x-requested-with", "XMLHttpRequest");
                     httpClient.DefaultRequestHeaders.TryAddWithoutValidation("origin", $"https://{domain}");
-                    httpClient.DefaultRequestHeaders.TryAddWithoutValidation("referer", Url);
+                    httpClient.DefaultRequestHeaders.TryAddWithoutValidation("referer", targetUrl);
                     httpClient.DefaultRequestHeaders.TryAddWithoutValidation("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36");
 
-                    // Try attach cookies from Playwright session
                     var cookies = await _playwrightService.GetCookiesHeaderForUrlAsync($"https://{domain}/");
                     if (!string.IsNullOrEmpty(cookies))
                     {
@@ -1125,20 +1245,19 @@ namespace m3u8Downloader.ViewModel
 
                     var content = new FormUrlEncodedContent(new[]
                     {
-                        new KeyValuePair<string, string>("link", _extractedToken),
+                        new KeyValuePair<string, string>("link", token),
                         new KeyValuePair<string, string>("id", id.Value.ToString()),
                     });
 
-                    var response = await httpClient.PostAsync(apiUrl, content);
-                    var body = await response.Content.ReadAsStringAsync();
+                    var response = await httpClient.PostAsync(apiUrl, content, cancellationToken);
+                    var body = await response.Content.ReadAsStringAsync(cancellationToken);
 
                     if (!response.IsSuccessStatusCode)
                     {
                         Result = $"❌ API lỗi: {(int)response.StatusCode} - {response.ReasonPhrase}\n{body}";
-                        return;
+                        return null;
                     }
 
-                    // Parse minimal JSON to get link[0].file
                     string? fileValue = null;
                     try
                     {
@@ -1158,7 +1277,7 @@ namespace m3u8Downloader.ViewModel
                     catch (Exception ex)
                     {
                         Result = $"❌ Lỗi parse JSON: {ex.Message}\n{body}";
-                        return;
+                        return null;
                     }
 
                     if (!string.IsNullOrEmpty(fileValue))
@@ -1167,14 +1286,11 @@ namespace m3u8Downloader.ViewModel
 
                         try
                         {
-                            // Process encrypted file value to m3u8
                             var playlist = await m3u8Downloader.Services.M3U8Processor.ProcessM3U8DataAsync(fileValue);
                             if (playlist != null && !string.IsNullOrEmpty(playlist.Content))
                             {
-                                // Optional: convert redirecting googleapis URLs to final URLs
-                                var converted = await _playwrightService.ConvertM3U8ContentAsync(playlist.Content, _cancellationTokenSource.Token);
-                                m3u8TextFromUrl = converted;
-                                Result = "✅ Đã xử lý và chuyển đổi M3U8 thành công!";
+                                var converted = await _playwrightService.ConvertM3U8ContentAsync(playlist.Content, cancellationToken);
+                                return converted;
                             }
                             else
                             {
@@ -1196,13 +1312,30 @@ namespace m3u8Downloader.ViewModel
             {
                 Result = $"❌ Lỗi gọi API: {ex.Message}";
             }
+
+            return null;
+        }
+
+        private async Task FetchAnimevietsubApi()
+        {
+            if (string.IsNullOrWhiteSpace(Url))
+            {
+                Result = "❌ Vui lòng nhập URL";
+                return;
+            }
+
+            var converted = await FetchAnimevietsubApiForUrl(Url, _cancellationTokenSource?.Token ?? CancellationToken.None);
+            if (!string.IsNullOrEmpty(converted))
+            {
+                m3u8TextFromUrl = converted;
+                Result = "✅ Đã xử lý và chuyển đổi M3U8 thành công!";
+            }
         }
 
         private async Task<bool> CheckPlaywrightInstallationAsync()
         {
             try
             {
-                // Thử tạo Playwright instance để kiểm tra
                 using var playwright = await Microsoft.Playwright.Playwright.CreateAsync();
                 return true;
             }
@@ -1222,10 +1355,9 @@ namespace m3u8Downloader.ViewModel
         {
             try
             {
-                // Tìm script chứa AnimeVsub function
                 var scriptPattern = @"AnimeVsub\('([^']+)'";
                 var match = System.Text.RegularExpressions.Regex.Match(html, scriptPattern);
-                
+
                 if (match.Success && match.Groups.Count > 1)
                 {
                     string token = match.Groups[1].Value;
@@ -1233,10 +1365,9 @@ namespace m3u8Downloader.ViewModel
                     return token;
                 }
 
-                // Thử pattern khác nếu không tìm thấy
                 var alternativePattern = @"AnimeVsub\(""([^""]+)""";
                 var altMatch = System.Text.RegularExpressions.Regex.Match(html, alternativePattern);
-                
+
                 if (altMatch.Success && altMatch.Groups.Count > 1)
                 {
                     string token = altMatch.Groups[1].Value;
@@ -1256,7 +1387,6 @@ namespace m3u8Downloader.ViewModel
 
         private void OnPlaywrightLogMessage(object? sender, string message)
         {
-            // Cập nhật UI thread-safe
             System.Windows.Application.Current.Dispatcher.Invoke(() =>
             {
                 Result = message;
@@ -1265,18 +1395,15 @@ namespace m3u8Downloader.ViewModel
 
         private void OnPlaywrightError(object? sender, string error)
         {
-            // Cập nhật UI thread-safe
             System.Windows.Application.Current.Dispatcher.Invoke(() =>
             {
                 Result = error;
             });
         }
 
-        // Dispose method để cleanup PlaywrightService
         public void Dispose()
         {
             _playwrightService?.Dispose();
         }
-
     }
 }

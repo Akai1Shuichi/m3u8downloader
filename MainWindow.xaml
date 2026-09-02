@@ -55,15 +55,18 @@
                         <RadioButton Content="Nhập URL" IsChecked="{Binding IsUrlMode, Mode=TwoWay}" />
                         <RadioButton
                             Margin="15,0,0,0"
+                            Content="Tải hàng loạt URL"
+                            IsChecked="{Binding IsBatchUrlMode, Mode=TwoWay}" />
+                        <RadioButton
+                            Margin="15,0,0,0"
                             Content="Nội dung m3u8"
                             IsChecked="{Binding IsTextMode, Mode=TwoWay}" />
                     </StackPanel>
 
-                    <!--  Nhập URL  -->
-                    <Grid>
+                    <!--  Nhập 1 URL  -->
+                    <Grid Visibility="{Binding IsUrlMode, Converter={StaticResource BoolToVisibility}}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
 
@@ -71,37 +74,74 @@
                             Grid.Column="0"
                             Label="URL:"
                             PlaceHolder="https://..."
-                            Text="{Binding Url, Mode=TwoWay}"
-                            Visibility="{Binding IsUrlMode, Converter={StaticResource BoolToVisibility}}" />
+                            Text="{Binding Url, Mode=TwoWay}" />
 
                         <ui:Button
                             Grid.Column="1"
                             Width="100"
-                            Margin="10,0,5,0"
+                            Margin="10,0,0,0"
                             VerticalAlignment="Bottom"
                             Command="{Binding CheckSizeCommand}"
                             Content="Check size"
                             Foreground="White"
-                            Style="{StaticResource PrimaryButton}"
-                            Visibility="{Binding IsUrlMode, Converter={StaticResource BoolToVisibility}}" />
+                            Style="{StaticResource PrimaryButton}" />
                     </Grid>
 
-                    <!--  Nhập text  -->
-                    <ui:TextBox
-                        Height="120"
-                        AcceptsReturn="True"
-                        PlaceholderText="#EXTM3U..."
-                        Text="{Binding M3u8Text, Mode=TwoWay}"
-                        TextWrapping="Wrap"
-                        VerticalScrollBarVisibility="Auto"
-                        Visibility="{Binding IsTextMode, Converter={StaticResource BoolToVisibility}}" />
+                    <!--  Tải hàng loạt URL  -->
+                    <StackPanel Visibility="{Binding IsBatchUrlMode, Converter={StaticResource BoolToVisibility}}">
+                        <Grid Margin="0,0,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock
+                                Grid.Column="0"
+                                VerticalAlignment="Center"
+                                FontWeight="SemiBold"
+                                Foreground="White"
+                                Text="Danh sách URL (mỗi dòng 1 URL):" />
+                            <ui:Button
+                                Grid.Column="1"
+                                Width="100"
+                                Margin="10,0,0,0"
+                                VerticalAlignment="Center"
+                                Command="{Binding CheckSizeCommand}"
+                                Content="Check size"
+                                Foreground="White"
+                                Style="{StaticResource PrimaryButton}" />
+                        </Grid>
+                        <ui:TextBox
+                            Height="130"
+                            AcceptsReturn="True"
+                            PlaceholderText="https://example.com/tap1.m3u8&#x0A;https://example.com/tap2.m3u8&#x0A;https://example.com/tap3.m3u8"
+                            Text="{Binding BatchUrls, Mode=TwoWay}"
+                            TextWrapping="Wrap"
+                            VerticalScrollBarVisibility="Auto" />
+                        <TextBlock
+                            Margin="0,4,0,0"
+                            FontSize="11"
+                            Foreground="#FFAAAAAA"
+                            Text="💡 Gợi ý: Mỗi dòng 1 URL. Nhập &quot;Tên file&quot; bên dưới để tự động đánh số thứ tự (ví dụ: TenPhim_01, TenPhim_02,...) hoặc để trống để tự đặt theo thời gian."
+                            TextWrapping="Wrap" />
+                    </StackPanel>
 
-                    <controls:LabeledInput
-                        Margin="0,10,0,0"
-                        Label="M3U8 Base URL:"
-                        PlaceHolder="https://example.com/path/"
-                        Text="{Binding M3u8BaseUrl, Mode=TwoWay}"
-                        Visibility="{Binding IsTextMode, Converter={StaticResource BoolToVisibility}}" />
+                    <!--  Nhập text  -->
+                    <StackPanel Visibility="{Binding IsTextMode, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock Margin="0,0,0,4" Foreground="White" Text="Nội dung M3U8:" />
+                        <ui:TextBox
+                            Height="120"
+                            AcceptsReturn="True"
+                            PlaceholderText="#EXTM3U..."
+                            Text="{Binding M3u8Text, Mode=TwoWay}"
+                            TextWrapping="Wrap"
+                            VerticalScrollBarVisibility="Auto" />
+
+                        <controls:LabeledInput
+                            Margin="0,10,0,0"
+                            Label="M3U8 Base URL:"
+                            PlaceHolder="https://example.com/path/"
+                            Text="{Binding M3u8BaseUrl, Mode=TwoWay}" />
+                    </StackPanel>
 
                 </StackPanel>
 
