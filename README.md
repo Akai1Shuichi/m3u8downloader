@@ -3,28 +3,29 @@
 Một ứng dụng desktop hiện đại trên Windows để tải các luồng video M3U8 với giao diện WPF trực quan.
 
 <p>
-  <a href="https://qr-donate.vercel.app/">
+  <a href="https://donate-trtoan.vercel.app/">
     <img src="https://img.shields.io/badge/Support-Donate-EA4AAA?style=for-the-badge&logo=githubsponsors&logoColor=red" alt="Donate">
   </a>
 </p>
 
-## Có gì mới trong v1.2.0
+## Có gì mới trong v1.4.0
 
-- 📱 **Tăng cường tương thích MP4:** Video hiện đã được tối ưu hóa để phát trên iPhone/Android bằng cách sử dụng chuẩn màu `yuv420p` và codec H.264/AAC.
-- 🏷️ **Bảo tồn đầy đủ Metadata:** Đã sửa lỗi thiếu thông tin độ dài, độ phân giải và tốc độ bit trong Windows Explorer.
-- 🚀 **Kích hoạt Fast Start:** Video hiện hỗ trợ phát ngay lập tức (faststart) trên các thiết bị di động.
-- 🛠️ **Tích hợp FFmpeg:** Hỗ trợ FFmpeg gốc để đảm bảo đóng gói (muxing) ổn định và sửa lỗi các phân đoạn video.
-- 🔧 **Tự động sửa lỗi (Fixup):** Sử dụng `--fixup force` để tự động sửa chữa các phân đoạn video bị hỏng hoặc bị thiếu.
+- 🚀 **Tải hàng loạt URL (Batch Download):** Hỗ trợ nhập danh sách nhiều link (mỗi dòng 1 URL) để tải toàn bộ danh sách tập/bộ phim tự động.
+- 🏷️ **Tự động đánh số thứ tự file:** Nhập tên phim (ví dụ: `TenPhim`), phần mềm tự động đặt tên theo từng tập (`TenPhim_01`, `TenPhim_02`,...).
+- 📊 **Theo dõi tiến độ trực quan:** Hiển thị trạng thái chi tiết cho từng video `[1/N]` trong thời gian thực và tổng kết sau khi hoàn thành.
+- ⏹️ **Quản lý hàng đợi tải & Dọn dẹp:** Dễ dàng dừng tải bất cứ lúc nào, tự động hủy hàng đợi và xóa các file tạm.
+- 🌐 **Tối ưu Server nội bộ:** Tự động điều phối cổng kết nối tránh xung đột khi tải nhiều video liên tục.
 
 ## Tính năng
 
 - 🎥 Tải các luồng video và âm thanh định dạng M3U8/MP4/MP3/M4A/MKV.
+- 📋 **3 Chế độ nhập liệu:** Nhập 1 URL, Tải hàng loạt danh sách URL hoặc Nhập trực tiếp nội dung M3U8 thô.
 - 🤖 **Hỗ trợ Animevietsub:** Tự động trích xuất liên kết và vượt qua anti-bot.
 - 🖥️ Giao diện WPF hiện đại với khung WPF-UI.
 - ⚡ Được xây dựng với .NET 8.0 để đạt hiệu suất tối ưu.
 - 📦 File thực thi độc lập (Self-contained).
-- 📝 Hỗ trợ tùy chỉnh tiêu đề (headers) và đường dẫn tải về.
-- 📊 Theo dõi tiến độ tải về trong thời gian thực.
+- 📝 Hỗ trợ tùy chỉnh tiêu đề (headers), số luồng chạy (`MaxWorker`) và đường dẫn lưu file.
+- 📊 Theo dõi tiến độ tải về và kích thước file trong thời gian thực.
 
 ## Ảnh chụp màn hình
 ![Giao diện ứng dụng](Resource/Image/appScreenshot.png)
@@ -37,8 +38,12 @@ Một ứng dụng desktop hiện đại trên Windows để tải các luồng 
 
 ## Cách sử dụng
 1. Khởi chạy ứng dụng.
-2. Dán URL M3U8 hoặc nội dung M3U8 thô của bạn vào ô nhập liệu.
-3. Chọn định dạng ưu tiên (MP4, MKV, MP3, v.v.).
-4. Nhấn nút tải về.
+2. Chọn cách nhập:
+   - **Nhập URL:** Dán 1 đường dẫn video M3U8.
+   - **Tải hàng loạt URL:** Dán danh sách các đường dẫn M3U8 (mỗi dòng 1 URL).
+   - **Nội dung m3u8:** Dán trực tiếp nội dung file playlist M3U8.
+3. Nhập thư mục lưu và tên file (nếu tải hàng loạt, tên file sẽ tự động được đánh số `_01`, `_02`,...).
+4. Chọn định dạng ưu tiên (MP4, MKV, MP3, v.v.).
+5. Nhấn nút **Tải**.
 
 Để biết thêm chi tiết, xem thêm tại [Nhật ký thay đổi (Changelog)](CHANGELOG.md).
