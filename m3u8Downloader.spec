@@ -75,9 +75,10 @@ coll = COLLECT(
 )
 
 if sys.platform == 'darwin':
+    macos_icon = 'Resource/Image/app.icns' if os.path.exists('Resource/Image/app.icns') else None
     app = BUNDLE(
         coll,
         name='M3U8Downloader.app',
-        icon='Resource/Image/app.ico',
+        icon=macos_icon,
         bundle_identifier='com.m3u8downloader.app',
     )
