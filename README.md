@@ -1,6 +1,6 @@
-# M3U8 Downloader
+# M3U8 Downloader (Python PyQt6)
 
-Một ứng dụng desktop hiện đại trên Windows để tải các luồng video M3U8 với giao diện WPF trực quan.
+Một ứng dụng desktop đa nền tảng hiện đại (**Windows**, **macOS**, **Ubuntu/Linux**) để tải các luồng video và playlist M3U8 với giao diện PyQt6 trực quan, hỗ trợ Dark Mode.
 
 <p>
   <a href="https://donate-trtoan.vercel.app/">
@@ -8,42 +8,55 @@ Một ứng dụng desktop hiện đại trên Windows để tải các luồng 
   </a>
 </p>
 
-## Có gì mới trong v1.4.0
+## Tính năng nổi bật
 
-- 🚀 **Tải hàng loạt URL (Batch Download):** Hỗ trợ nhập danh sách nhiều link (mỗi dòng 1 URL) để tải toàn bộ danh sách tập/bộ phim tự động.
-- 🏷️ **Tự động đánh số thứ tự file:** Nhập tên phim (ví dụ: `TenPhim`), phần mềm tự động đặt tên theo từng tập (`TenPhim_01`, `TenPhim_02`,...).
-- 📊 **Theo dõi tiến độ trực quan:** Hiển thị trạng thái chi tiết cho từng video `[1/N]` trong thời gian thực và tổng kết sau khi hoàn thành.
-- ⏹️ **Quản lý hàng đợi tải & Dọn dẹp:** Dễ dàng dừng tải bất cứ lúc nào, tự động hủy hàng đợi và xóa các file tạm.
-- 🌐 **Tối ưu Server nội bộ:** Tự động điều phối cổng kết nối tránh xung đột khi tải nhiều video liên tục.
+- 🌐 **Đa nền tảng (Cross-Platform):** Chạy mượt mà trên Windows, macOS (Intel & Apple Silicon) và Ubuntu / Linux.
+- 🎥 **Định dạng đa dạng:** Tải và chuyển đổi luồng M3U8 sang MP4, MKV, MP3, M4A/AAC.
+- 📋 **3 Chế độ nhập liệu:**
+  - **Nhập 1 URL:** Dán 1 link video / m3u8.
+  - **Tải hàng loạt URL (Batch Download):** Nhập danh sách nhiều URL (mỗi dòng 1 URL, hỗ trợ cú pháp `URL | TênTùyChỉnh`), tự động đánh số thứ tự file `_01, _02,...`.
+  - **Nội dung M3U8:** Dán trực tiếp nội dung playlist hoặc chuỗi AES-CBC đã mã hóa.
+- 🔍 **Kiểm tra kích thước (Check Size):** Tự động phân tích playlist và ước tính dung lượng video trước khi tải.
+- ⚡ **Tải siêu tốc:** Tùy chỉnh số luồng (`MaxWorker` / `concurrent-fragments`), hỗ trợ retry và chống drop stream.
+- 📝 **Tùy biến Headers:** Thêm User-Agent, Referer, Cookie, Authorization dễ dàng.
+- ⏹️ **Dừng tải & Dọn dẹp:** Dừng tải bất cứ lúc nào, tự động hủy tiến trình và xóa sạch file tạm (`.part`, `.ytdl`, `.temp`).
+- 🤖 **CI/CD Tự động:** Tích hợp GitHub Actions Matrix tự động build và tạo release package cho cả 3 hệ điều hành.
 
-## Tính năng
+---
 
-- 🎥 Tải các luồng video và âm thanh định dạng M3U8/MP4/MP3/M4A/MKV.
-- 📋 **3 Chế độ nhập liệu:** Nhập 1 URL, Tải hàng loạt danh sách URL hoặc Nhập trực tiếp nội dung M3U8 thô.
-- 🤖 **Hỗ trợ Animevietsub:** Tự động trích xuất liên kết và vượt qua anti-bot.
-- 🖥️ Giao diện WPF hiện đại với khung WPF-UI.
-- ⚡ Được xây dựng với .NET 8.0 để đạt hiệu suất tối ưu.
-- 📦 File thực thi độc lập (Self-contained).
-- 📝 Hỗ trợ tùy chỉnh tiêu đề (headers), số luồng chạy (`MaxWorker`) và đường dẫn lưu file.
-- 📊 Theo dõi tiến độ tải về và kích thước file trong thời gian thực.
+## Cài đặt & Chạy từ Source Code (Development)
 
-## Ảnh chụp màn hình
-![Giao diện ứng dụng](Resource/Image/appScreenshot.png)
+### 1. Yêu cầu hệ thống
+- Python 3.10+
+- FFmpeg (đã cài trong hệ thống hoặc đặt trong thư mục `Tools/ffmpeg/`)
 
-## Cài đặt & Thiết lập
-1. Tải bản phát hành mới nhất từ trang [Releases](https://github.com/Akai1Shuichi/m3u8downloader/releases).
-2. Giải nén tệp ZIP.
-3. **Quan trọng:** Để kích hoạt đầy đủ khả năng tương thích MP4 và metadata, hãy đặt file `ffmpeg.exe` và `ffprobe.exe` vào trong thư mục `Tools/ffmpeg/`.
-4. Chạy `m3u8Downloader.exe`.
+### 2. Cài đặt thư viện
+```bash
+pip install -r requirements.txt
+```
 
-## Cách sử dụng
-1. Khởi chạy ứng dụng.
-2. Chọn cách nhập:
-   - **Nhập URL:** Dán 1 đường dẫn video M3U8.
-   - **Tải hàng loạt URL:** Dán danh sách các đường dẫn M3U8 (mỗi dòng 1 URL).
-   - **Nội dung m3u8:** Dán trực tiếp nội dung file playlist M3U8.
-3. Nhập thư mục lưu và tên file (nếu tải hàng loạt, tên file sẽ tự động được đánh số `_01`, `_02`,...).
-4. Chọn định dạng ưu tiên (MP4, MKV, MP3, v.v.).
-5. Nhấn nút **Tải**.
+### 3. Khởi chạy ứng dụng
+```bash
+python main.py
+```
 
-Để biết thêm chi tiết, xem thêm tại [Nhật ký thay đổi (Changelog)](CHANGELOG.md).
+---
+
+## Đóng gói ứng dụng (Build Executable)
+
+Để đóng gói ứng dụng thành file chạy độc lập (.exe trên Windows, .app trên macOS, binary trên Linux):
+
+```bash
+pip install pyinstaller
+pyinstaller m3u8Downloader.spec --noconfirm
+```
+
+File sau khi build sẽ nằm trong thư mục `dist/M3U8Downloader/`.
+
+---
+
+## Tự động Build bằng GitHub Actions
+
+Dự án đã tích hợp sẵn workflow `.github/workflows/release.yml`. Khi bạn tạo một tag mới (ví dụ: `v1.5.0`):
+- GitHub Actions sẽ tự động build ứng dụng song song trên **Windows**, **macOS** và **Ubuntu**.
+- Tự động nén và đính kèm các file `M3U8Downloader-windows-x64.zip`, `M3U8Downloader-macos.zip`, `M3U8Downloader-ubuntu-x64.tar.gz` vào phần GitHub Release.

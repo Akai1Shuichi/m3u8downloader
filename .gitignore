@@ -141,6 +141,13 @@ RELEASE-GUIDE.md
 # Build output files
 *.zip
 m3u8Downloader-v*.zip
+*.tar.gz
 
-# GitHub Actions (uncomment if you want to keep them private)
-# .github/
+# Python & PyInstaller
+__pycache__/
+*.py[cod]
+*$py.class
+dist/
+build/
+*.spec.bak
+settings.json

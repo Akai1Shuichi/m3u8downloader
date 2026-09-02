@@ -5,6 +5,13 @@ Tất cả các thay đổi đáng chú ý đối với dự án này sẽ đư�
 Định dạng dựa trên [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 và dự án này tuân thủ [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-09-02
+
+### Đã thêm (Added)
+- **Chuyển đổi hoàn toàn sang Python + PyQt6:** Hỗ trợ đa nền tảng (Windows, macOS, Ubuntu/Linux).
+- Cải thiện giao diện Dark Mode hiện đại, mượt mà với `qdarktheme`.
+
+
 ## [1.4.0] - 2026-09-02
 
 ### Đã thêm (Added)

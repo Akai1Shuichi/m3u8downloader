@@ -1,0 +1,5 @@
+PyQt6>=6.6.0
+pyqtdarktheme>=2.1.0
+pycryptodome>=3.20.0
+requests>=2.31.0
+yt-dlp>=2024.3.10
