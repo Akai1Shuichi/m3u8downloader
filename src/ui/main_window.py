@@ -362,6 +362,34 @@ class MainWindow(QMainWindow):
 
         main_layout.addLayout(bottom_row)
 
+        # Telegram / AI Link Row
+        telegram_row = QHBoxLayout()
+        telegram_row.addStretch()
+
+        telegram_icon_path = get_resource_path("Resource/Image/telegram.png")
+        if os.path.exists(telegram_icon_path):
+            telegram_img = QLabel()
+            pix = QPixmap(telegram_icon_path).scaled(
+                18,
+                18,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+            telegram_img.setPixmap(pix)
+            telegram_row.addWidget(telegram_img)
+
+        ai_label = QLabel(
+            'AI mình dùng để vibe code '
+            '<a href="https://t.me/DichVuIT_bot" '
+            'style="color: #0098ff; text-decoration: none; font-weight: bold;">'
+            'tại đây: @DichVuIT_bot</a>'
+        )
+        ai_label.setStyleSheet("color: #cccccc; font-size: 12px;")
+        ai_label.setOpenExternalLinks(True)
+        telegram_row.addWidget(ai_label)
+
+        main_layout.addLayout(telegram_row)
+
     def _on_mode_changed(self, button_id: int, checked: bool):
         if not checked:
             return

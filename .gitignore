@@ -151,3 +151,5 @@ dist/
 build/
 *.spec.bak
 settings.json
+
+.venv/
